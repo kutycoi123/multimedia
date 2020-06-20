@@ -3,7 +3,12 @@ from math import ceil
 
 def bytesToInt(bytes, byteorder='little', signed=False):
     return int.from_bytes(bytes, byteorder=byteorder, signed=signed)
-
+def clip(value, lowerbound, higherbound):
+    if value < lowerbound:
+        return lowerbound
+    if value > higherbound:
+        return higherbound
+    return value
 class Bmp24BitImage():
     def __init__(self, path):
         if (not path.endswith('.bmp')):
@@ -32,7 +37,7 @@ class Bmp24BitImage():
         i = self.dataOffset
         while i < len(self.img):
             for k in range(i, i + self.width * self.bytesPerPixel, self.bytesPerPixel): # loop through all bytes on a row, except for extra bytes for padding
-                grayscale += (int(0.3 * self.img[k] + 0.59 * self.img[k+1] + 0.11 * self.img[k+2])).to_bytes(1, byteorder='little')
+                grayscale += (int(0.299 * self.img[k] + 0.587 * self.img[k+1] + 0.114 * self.img[k+2])).to_bytes(1, byteorder='little')
             if self.extraBytesPerRow > 0:
                 grayscale += (0).to_bytes(self.extraBytesPerRow, byteorder='little') # for row padding 
             i += self.bytesPerRow
@@ -52,6 +57,20 @@ class Bmp24BitImage():
 
             i += self.bytesPerRow
         return dark
+
+    def vivid(self):
+        """ Make image more vivid"""
+        vivid = self.img[:]
+        i = self.dataOffset
+        a = 2.2
+        b = 50
+        while i < len(self.img):
+            for k in range(i, i + self.width * self.bytesPerPixel, self.bytesPerPixel):
+                vivid[k] = clip(int(a*self.img[k] + b), 0, 255)
+                vivid[k+1] = clip(int(a*self.img[k+1] + b), 0, 255)
+                vivid[k+2] = clip(int(a*self.img[k+2] + b), 0, 255)
+            i += self.bytesPerRow
+        return vivid
         
     def __readImg(self, path):
         img = bytearray()
@@ -71,8 +90,11 @@ if __name__ == "__main__":
     #with open("grayscale.bmp", 'wb') as f:
     #    f.write(grayscale)
 
-    dark = img.darken()
-    with open("dark.bmp", "wb") as f:
-        f.write(dark)
-        
+    #dark = img.darken()
+    #with open("dark.bmp", "wb") as f:
+    #    f.write(dark)
+
+    vivid = img.vivid()
+    with open("vivid.bmp", "wb") as f:
+        f.write(vivid)
     

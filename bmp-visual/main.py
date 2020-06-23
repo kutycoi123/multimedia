@@ -1,5 +1,9 @@
 import sys
+from tkinter import *
+from PIL import ImageTk, Image
+from tkinter import filedialog
 from math import ceil
+
 
 def bytesToInt(bytes, byteorder='little', signed=False):
     return int.from_bytes(bytes, byteorder=byteorder, signed=signed)
@@ -23,7 +27,20 @@ class Bmp24BitImage():
         self.bytesPerPixel = self.bitsPerPixel // 8
         self.bytesPerRow = ceil((self.width * self.bytesPerPixel) / 4) * 4
         self.extraBytesPerRow = self.bytesPerRow - (self.width * self.bytesPerPixel)
-    
+        
+    def grayscale_24bit(self):
+        grayscale = self.img[:]
+        i = self.dataOffset
+        while i < len(self.img):
+            for k in range(i, i + self.width * self.bytesPerPixel, self.bytesPerPixel):
+                r = self.img[k]
+                g = self.img[k+1]
+                b = self.img[k+2]
+                c = int(0.30*r + 0.59*g + 0.11*b)
+                grayscale[k] = grayscale[k+1] = grayscale[k+2] = c
+            i += self.bytesPerRow
+        return grayscale
+        
     def grayscale(self):
         """ Convert 24-bit bmp image to a grayscale image"""
         grayscale = self.img[:self.dataOffset]
@@ -84,8 +101,9 @@ class Bmp24BitImage():
 
 
 if __name__ == "__main__":
-    path = sys.argv[1]
-    img = Bmp24BitImage(path)
+    
+    #path = sys.argv[1]
+    #img = Bmp24BitImage(path)
     #grayscale = img.grayscale()
     #with open("grayscale.bmp", 'wb') as f:
     #    f.write(grayscale)
@@ -94,7 +112,42 @@ if __name__ == "__main__":
     #with open("dark.bmp", "wb") as f:
     #    f.write(dark)
 
-    vivid = img.vivid()
-    with open("vivid.bmp", "wb") as f:
-        f.write(vivid)
+    #vivid = img.vivid()
+    #with open("vivid.bmp", "wb") as f:
+    #    f.write(vivid)
+
+    root = Tk()
+    root.title("Q3")
+    def onExit():
+        # Clean files
+        root.quit()
+        
+    label = None
+        
+    def imgSelect():
+        global imgTkinter
+        global label
+        if label:
+            label.destroy()
+        root.filename = filedialog.askopenfilename(initialdir="/",title="Select an image",filetypes=(("bmp files", "*.bmp"),))
+        rawImg = Bmp24BitImage(root.filename)
+        grayscale = rawImg.grayscale_24bit()
+        out = "grayscale.bmp"
+        with open("grayscale.bmp", 'wb') as f:
+            f.write(grayscale)
+        #dark = rawImg.darken()
+        #out = "dark.bmp"
+        #with open(out, "wb") as f:
+        #    f.write(dark)
+        imgTkinter = ImageTk.PhotoImage(Image.open(out))
+        label = Label(image=imgTkinter, width=700)
+        label.pack()
+            
+    fileBtn = Button(root, text="Select BMP image", command=imgSelect)
+    fileBtn.pack()
+
+    root.protocol("WM_DELETE_WINDOW", onExit)
+    root.mainloop()
+    
+
     

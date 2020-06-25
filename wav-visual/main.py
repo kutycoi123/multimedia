@@ -23,20 +23,26 @@ def readSamples(path):
     bytesPerSample = readBitsPerSample(offset)/8
     blockAlign = readBlockAlign(offset)
     totalSamples = 0 # Calculate total number of samples
+    maxValue = -(2**16) 
+    maxAbsValue = 0
     data = []
     data_offset = 44
     while data_offset < len(offset):
         sample = offset[data_offset:(data_offset+blockAlign)]
-        #data.append(sample)
+        sampleVal = 0
         if (bytesPerSample >= 2): #16-bit sample, 2's-complement value -32768 to 32767
-            data.append(int.from_bytes(sample, byteorder='little', signed=True))
+            sampleVal = int.from_bytes(sample, byteorder='little', signed=True)
         else: #8-bit sample, unsigned value 0 to 255
-            data.append(int.from_bytes(sample, byteorder='little'))
+            sampleVal = int.from_bytes(sample, byteorder='little')
+        if sampleVal > maxValue:
+            maxValue = sampleVal
+        if abs(sampleVal) > maxAbsValue:
+            maxAbsValue = abs(sampleVal)
+        data.append(sampleVal)
         data_offset += blockAlign
         totalSamples+=1
-    print(bytesPerSample)
-    print(totalSamples)
-    return data, totalSamples
+    
+    return data, totalSamples, maxValue, maxAbsValue
 
 if __name__ == "__main__":
     #path = sys.argv[1]
@@ -49,15 +55,20 @@ if __name__ == "__main__":
     root = Tk()
     root.title("Q2")
     root.geometry(WINDOW_SIZE)
+
+
+    
     # Event handler
     def chooseFile():
         global cv
         global lines
+        global totalSamplesLbl, maxValueLbl, maxAbsValueLbl
         root.filename = filedialog.askopenfilename(initialdir="/", title="Select wav file", filetypes=(("wav files", "*.wav"),))
-        #cv.delete(ALL)
-        data, totalSamples  = readSamples(root.filename)
+        data, totalSamples, maxValue, maxAbsValue  = readSamples(root.filename)
+        totalSamplesLbl.set("Total number of samples: " + str(totalSamples))
+        maxValueLbl.set("Maximum value among samples: " + str(maxValue))
+        maxAbsValueLbl.set("Maximum absolute value among samples: " + str(maxAbsValue))
         points = []
-        print(lines[:10])
         for idx, e in enumerate(data):
             x = 0 + idx * (CANVAS_WIDTH / totalSamples)
             y = 300+(-e / 300)
@@ -76,24 +87,44 @@ if __name__ == "__main__":
                 lines.append(newLine)
             else:
                 cv.coords(lines[i], p1[0], p1[1], p2[0], p2[1])
+        cv.create_line(0, CANVAS_HEIGHT/2, CANVAS_WIDTH, CANVAS_HEIGHT/2, fill="white")
             
     def reset():
         global cv
         global lines
+        global totalSamplesLbl, maxValueLbl, maxAbsValueLbl
+        totalSamplesLbl.set("Total number of samples: ")
+        maxValueLbl.set("Maximum value among samples: ")
+        maxAbsValueLbl.set("Maximum absolute value among samples: ")
         lines = []
         cv.delete(ALL)
     # Choose file button
     chooseFileBtn = Button(root, text="Choose file", command=chooseFile)
     chooseFileBtn.pack()
-
+    
     # Reset button
     resetBtn = Button(root, text="Reset", command=reset)
     resetBtn.pack()
+    
+    # Label
+    totalSamplesLbl = StringVar()
+    totalSamplesLbl.set("Total number of samples:")
+    Label(root, textvariable=totalSamplesLbl, anchor='w').pack()
+    #totalSamplesLbl.pack()
+    maxValueLbl = StringVar()
+    maxValueLbl.set("Maximum value among samples:")
+    Label(root, textvariable=maxValueLbl).pack()
+    #maxValueLbl.pack()
+    maxAbsValueLbl = StringVar()
+    maxAbsValueLbl.set("Maximum absolute value among samples:")
+    Label(root, textvariable=maxAbsValueLbl).pack()
+    #maxAbsValueLbl.pack()
+    
     # Canvas
     cv = Canvas(root, width=CANVAS_WIDTH, height=CANVAS_HEIGHT)
     cv.pack()
     lines = []
-    #cv.create_line(0, CANVAS_HEIGHT/2, CANVAS_WIDTH, CANVAS_HEIGHT/2)
+
     #print(cv)
     #plt.figure(figsize=(10,5))
     #plt.plot(data, 'b-')

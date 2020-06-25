@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 from tkinter import *
 from tkinter import filedialog
 
@@ -124,12 +123,6 @@ if __name__ == "__main__":
     cv = Canvas(root, width=CANVAS_WIDTH, height=CANVAS_HEIGHT)
     cv.pack()
     lines = []
-
-    #print(cv)
-    #plt.figure(figsize=(10,5))
-    #plt.plot(data, 'b-')
-    #plt.show()
-    #plt.savefig("test.svg")
 
     root.mainloop()
         

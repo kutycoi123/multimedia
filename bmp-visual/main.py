@@ -1,4 +1,4 @@
-import sys
+import os
 from tkinter import *
 from PIL import ImageTk, Image
 from tkinter import filedialog
@@ -101,50 +101,77 @@ class Bmp24BitImage():
 
 
 if __name__ == "__main__":
-    
-    #path = sys.argv[1]
-    #img = Bmp24BitImage(path)
-    #grayscale = img.grayscale()
-    #with open("grayscale.bmp", 'wb') as f:
-    #    f.write(grayscale)
-
-    #dark = img.darken()
-    #with open("dark.bmp", "wb") as f:
-    #    f.write(dark)
-
-    #vivid = img.vivid()
-    #with open("vivid.bmp", "wb") as f:
-    #    f.write(vivid)
-
+    # Init root
     root = Tk()
     root.title("Q3")
+    root.geometry("800x600")
+    # Init global variables
+    label = None
+    grayscalePath = "grayscalecmpt365p1.bmp"
+    darkPath = "darkcmpt365p1.bmp"
+    vividPath = "vividcmpt365p1.bmp"
+    processedImg = None
+
+    def cleanFiles():
+        global grayscalePath, darkPath, vividPath
+        files = [grayscalePath, darkPath, vividPath]
+        for path in files:
+            if os.path.exists(path):
+                os.remove(path)
     def onExit():
         # Clean files
+        cleanFiles()
         root.quit()
         
-    label = None
-        
     def imgSelect():
-        global imgTkinter
         global label
+        global grayscale, dark, vivid, original
+        global grayscalePath, darkPath, vivid
+        cleanFiles()
         if label:
             label.destroy()
         root.filename = filedialog.askopenfilename(initialdir="/",title="Select an image",filetypes=(("bmp files", "*.bmp"),))
         rawImg = Bmp24BitImage(root.filename)
-        grayscale = rawImg.grayscale_24bit()
-        out = "grayscale.bmp"
-        with open("grayscale.bmp", 'wb') as f:
-            f.write(grayscale)
-        #dark = rawImg.darken()
-        #out = "dark.bmp"
-        #with open(out, "wb") as f:
-        #    f.write(dark)
-        imgTkinter = ImageTk.PhotoImage(Image.open(out))
-        label = Label(image=imgTkinter, width=700)
-        label.pack()
+        grayscaleRaw = rawImg.grayscale_24bit()
+        darkRaw = rawImg.darken()
+        vividRaw = rawImg.vivid()
+
+        with open(grayscalePath, 'wb') as f:
+            f.write(grayscaleRaw)
+        with open(darkPath, 'wb') as f:
+            f.write(darkRaw)
+        with open(vividPath, 'wb') as f:
+            f.write(vividRaw)
             
+        original = ImageTk.PhotoImage(Image.open(root.filename))
+        label = Label(image=original, width=700)
+        label.pack()
+        
+    def selectProcessedImg(path):
+        global label
+        global processedImg
+        if label:
+            label.destroy()
+        try:
+            processedImg = ImageTk.PhotoImage(Image.open(path))
+        except:
+            pass
+        if processedImg:
+            label = Label(image=processedImg, width=700)
+            label.pack()
+
+                
     fileBtn = Button(root, text="Select BMP image", command=imgSelect)
     fileBtn.pack()
+
+    grayscaleBtn = Button(root, text="Make grayscale", command=lambda: selectProcessedImg(grayscalePath))
+    grayscaleBtn.pack()
+    darkBtn = Button(root, text="Make darker", command=lambda: selectProcessedImg(darkPath))
+    darkBtn.pack()
+    vividBtn = Button(root, text="Make vivid", command=lambda: selectProcessedImg(vividPath))
+    vividBtn.pack()
+
+    
 
     root.protocol("WM_DELETE_WINDOW", onExit)
     root.mainloop()

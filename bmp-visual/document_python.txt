@@ -10,40 +10,43 @@ Execution details:
   4. How to run source code:
      - Source code named: bmp.py
      - Language required: python3
-     - Third-party packages required: pillow
-       + You can install this packages by using one of the python package manager such
-       as pip, pipenv, etc
-       + When you install python3, pip is already installed for you so you can use
-       pip to install any packages you want by this command like:
-       	   pip install pillow
+     - Packages required: tkinter(automatically installed with python3.8)
      - Command to run source code:
        	   python3 bmp.py
+     - Note: If you don't have tkinter package, you can simply install it by this command:
+       	     sudo apt-get install python3-tk
+	     
 	   
 Source code details:
   1. Main logic:
      - The main logic to read original image and make it grayscale, darker and more vivid
      are implemented inside Bmp24BitImage. In this class, there are 4 main methods which are
-     "__readImg", "grayscale", "darken" and "vivid"
+     "__readImg", "original", "grayscale", "darken" and "vivid"
      
      - __readImg:
        + This is the private method that I called when the object is instantiated.
        + The method simply reads the image file as a binary file then returns a byte array which contains all bytes in the file
+     - original:
+       + This method simply returns the original pixel values of the image
      - grayscale:
        + This method simply loops through all the image data (just data, not headers) and for each channel R,G,B, it re-calculates the
-       grayscale value by using this
+       grayscale value by using this formula:
        	       r = g = b = int(0.30*r + 0.59*g + 0.11*b)
+       + It returns an array of pixels of (r,g,b)
      - darken:
        + This method is quite similar to grayscale, except that it uses a different formula to re-calculate RGB value:
        	       r = int(r * 0.5)
 	       g = int(g * 0.5)
 	       b = int(b * 0.5)
 	 Bascically it just reduce the value by half for every channel
+       + It returns an array of pixels of (r,g,b)
      - vivid:
        + This method also loops through image data and re-calculate RGB value. I used a linear equation to calculate new pixel values:
        	      new_value = alpha * old_value + beta
 	      where alpha and beta can be intepreted as parameters to control constrast and brightness of the pixel
 	 The above equation is the one introduced in the book "Computer vision: Algorithms and Applications" by Richard Szeliski
        + The result actually could be more than 255 or less than 0 so I defined a function named "myround" to round the value back to 0 and 255
+       + It returns an array of pixels (r,g,b)
   2. GUI code
      - All the GUI code is put under: if __name__ == "__main__"
        This serves as a main function for the entire program
@@ -53,21 +56,16 @@ Source code details:
        	  1. "fileBtn" is clicked, which triggers function "imgSelect"
 	  2. First I clean up files and label in case you click the button multiple times to test different images. 
 	  3. Inside "imgSelect", I open a dialog for you to choose file
-	  4. After you choose a bmp image, I create Bmp24BitImage instance to read raw image and also call grayscale(), darken() and vivid()
-	     to process the original image.
-	  5. I write these images to the current folder in which the code is run, so that I can use GUI to display the images.
-	     I can't find a way to display these images directly from bytes so I decided to save these temporary images
-	     I clean these files later when you click exit and when the next time you choose image
-	  6. Then I simply use pillow package to load the original image that I just process and save.
+	  4. After you choose a bmp image, I create Bmp24BitImage instance to read raw image and also call original(),
+	  grayscale(), darken() and vivid() to process the original image.
+	  5. Call drawPixels() to draw image pixel by pixel
+	     
      - When you click "Original image", "Make grayscale", "Make darker" or "Make vivid":
        	  1. selectProcessedImg() is triggerd
-	  2. label is cleaned up
-	  3. "processedImg" variable is created to store the image that is processed and saved before
-	  4. Display the image
+	  4. Call drawPixels() to draw image pixel by pixel
      - Summary:
-	  + As I explained above, all the low-level steps to read a raw bmp image, make it grayscale, dark and vivid are perfomed in "__readImg", "grayscale",
-       	    "darken" and "vivid" method inside Bmp24BitImage class.
-	  + After completed these steps, I saved these images temporarily in current folder
-	  + I used pillow package only to display them on GUI
-	  + I cleaned up all temporary images as soon as the program is exited     
+	  + As I explained above, all the low-level steps to read a raw bmp image, make it grayscale, dark and vivid are perfomed
+	  in "__readImg", "original", "grayscale", "darken" and "vivid" method inside Bmp24BitImage class.
+	  + I draw an image byte by byte in "drawPixels" function
+
        	      

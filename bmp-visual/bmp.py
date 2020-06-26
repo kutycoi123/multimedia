@@ -76,7 +76,21 @@ class Bmp24BitImage():
                 img += byte
                 byte = f.read(1)
         return img
-    
+
+    def getAllPixels(self):
+        pixels = []
+        i = self.dataOffset
+        while i < len(self.img):
+            rowPixels = []
+            for k in range(i, i + self.width * self.bytesPerPixel, self.bytesPerPixel):
+                r = self.img[k]
+                g = self.img[k+1]
+                b = self.img[k+2]
+                rowPixels.append((b,g,r))
+            i += self.bytesPerRow
+            pixels.append(rowPixels)
+        #print(pixels[:10])
+        return pixels
 
 
 if __name__ == "__main__":
@@ -103,12 +117,13 @@ if __name__ == "__main__":
         root.quit()
         
     def imgSelect():
-        global label
+        global label, cv
         global grayscale, dark, vivid, original
         global grayscalePath, darkPath, vivid
         global processedImg
         cleanFiles()
         processedImg = None
+        cv.delete(ALL)
         if label:
             label.destroy()
         root.filename = filedialog.askopenfilename(initialdir="/",title="Select an image",filetypes=(("bmp files", "*.bmp"),))
@@ -125,13 +140,25 @@ if __name__ == "__main__":
             with open(vividPath, 'wb') as f:
                 f.write(vividRaw)
             
-            original = ImageTk.PhotoImage(Image.open(root.filename))
-            label = Label(image=original, width=700)
-            label.pack()
+            #original = ImageTk.PhotoImage(Image.open(root.filename))
+            #label = Label(image=original, width=700)
+            #label.pack()
+            pixels = rawImg.getAllPixels()
+            print(len(pixels))
+            print(len(pixels[0]))
+            y = 0
+            for row in range(len(pixels)-1, -1, -1):
+                for col in range(len(pixels[0])):
+                    color = "#%02x%02x%02x" % pixels[row][col]
+                    #cv.create_rectangle((100+x, 50+col)*2, outline="", fill=color)
+                    xx, yy = 100+col, 50+y
+                    cv.create_line(xx, yy, xx+1,yy, fill=color)
+                y += 1
         
     def selectProcessedImg(path):
-        global label
+        global label, cv
         global processedImg
+        cv.delete(ALL)
         if label:
             label.destroy()
         try:
@@ -156,7 +183,10 @@ if __name__ == "__main__":
     vividBtn.pack()
 
     
-
+    cv = Canvas(root, width=800, height=800)
+    cv.pack()
+    #for x in range(100):
+    #    cv.create_rectangle((x,100)*2, outline="",fill="red")
     root.protocol("WM_DELETE_WINDOW", onExit)
     root.mainloop()
     

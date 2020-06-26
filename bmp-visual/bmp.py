@@ -1,13 +1,14 @@
-import os
+#import os
 from tkinter import *
-from PIL import ImageTk, Image
 from tkinter import filedialog
 from math import ceil
 
 
 def bytesToInt(bytes, byteorder='little', signed=False):
+    """ Convert bytes to integer"""
     return int.from_bytes(bytes, byteorder=byteorder, signed=signed)
 def myround(value, lowerbound, higherbound):
+    """ Round value back to the interval between [lowerbound, higherbound]"""
     if value < lowerbound:
         return lowerbound
     if value > higherbound:
@@ -28,45 +29,68 @@ class Bmp24BitImage():
         self.bytesPerRow = ceil((self.width * self.bytesPerPixel) / 4) * 4
         self.extraBytesPerRow = self.bytesPerRow - (self.width * self.bytesPerPixel)
         
-    def grayscale(self):
-        grayscale = self.img[:]
+    def original(self):
+        pixels = []
         i = self.dataOffset
         while i < len(self.img):
+            rowPixels = []
             for k in range(i, i + self.width * self.bytesPerPixel, self.bytesPerPixel):
-                r = self.img[k]
+                b = self.img[k]
                 g = self.img[k+1]
-                b = self.img[k+2]
-                c = int(0.30*r + 0.59*g + 0.11*b)
-                grayscale[k] = grayscale[k+1] = grayscale[k+2] = c
+                r = self.img[k+2]
+                rowPixels.append((r,g,b))
             i += self.bytesPerRow
-        return grayscale
+            pixels.append(rowPixels)
+        return pixels
+        
+    def grayscale(self):
+        """Return grayscale pixels"""
+        pixels = []
+        i = self.dataOffset
+        while i < len(self.img):
+            row = []
+            for k in range(i, i + self.width * self.bytesPerPixel, self.bytesPerPixel):
+                b = self.img[k]
+                g = self.img[k+1]
+                r = self.img[k+2]
+                c = int(0.30*r + 0.59*g + 0.11*b)
+                #grayscale[k] = grayscale[k+1] = grayscale[k+2] = c
+                row.append((c,c,c))
+            pixels.append(row)
+            i += self.bytesPerRow
+        return pixels
 
     def darken(self):
-        """ Darker 24-bit bmp image """
-        dark = self.img[:]
+        """ Return darker pixels """
+        pixels = []
         i = self.dataOffset
         while i < len(self.img):
+            row = []
             for k in range(i, i + self.width * self.bytesPerPixel, self.bytesPerPixel):
-                dark[k] = int(self.img[k]*0.5)
-                dark[k+1] = int(self.img[k+1]*0.5)
-                dark[k+2] = int(self.img[k+2]*0.5)
-
+                b = int(self.img[k]*0.5)
+                g = int(self.img[k+1]*0.5)
+                r = int(self.img[k+2]*0.5)
+                row.append((r,g,b))
+            pixels.append(row)
             i += self.bytesPerRow
-        return dark
+        return pixels
 
     def vivid(self):
-        """ Make image more vivid"""
-        vivid = self.img[:]
+        """ Return vivid pixels """
+        pixels = []
         i = self.dataOffset
-        a = 2.2
-        b = 50
+        alpha = 2.2
+        beta = 50
         while i < len(self.img):
+            row = []
             for k in range(i, i + self.width * self.bytesPerPixel, self.bytesPerPixel):
-                vivid[k] = myround(int(a*self.img[k] + b), 0, 255)
-                vivid[k+1] = myround(int(a*self.img[k+1] + b), 0, 255)
-                vivid[k+2] = myround(int(a*self.img[k+2] + b), 0, 255)
+                b = myround(int(alpha*self.img[k] + beta), 0, 255)
+                g = myround(int(alpha*self.img[k+1] + beta), 0, 255)
+                r = myround(int(alpha*self.img[k+2] + beta), 0, 255)
+                row.append((r,g,b))
+            pixels.append(row)
             i += self.bytesPerRow
-        return vivid
+        return pixels
         
     def __readImg(self, path):
         img = bytearray()
@@ -77,116 +101,82 @@ class Bmp24BitImage():
                 byte = f.read(1)
         return img
 
-    def getAllPixels(self):
-        pixels = []
-        i = self.dataOffset
-        while i < len(self.img):
-            rowPixels = []
-            for k in range(i, i + self.width * self.bytesPerPixel, self.bytesPerPixel):
-                r = self.img[k]
-                g = self.img[k+1]
-                b = self.img[k+2]
-                rowPixels.append((b,g,r))
-            i += self.bytesPerRow
-            pixels.append(rowPixels)
-        #print(pixels[:10])
-        return pixels
 
 
 if __name__ == "__main__":
     # Init root
     root = Tk()
     root.title("Q3")
-    root.geometry("800x600")
+    root.geometry("1000x700")
     # Init global variables
-    label = None
-    grayscalePath = "grayscalecmpt365p1.bmp"
-    darkPath = "darkcmpt365p1.bmp"
-    vividPath = "vividcmpt365p1.bmp"
-    processedImg = None
+    original = grayscale = dark = vividP = [] # array of pixel color: [(r,g,b)]
+    CANVAS_WIDTH = 900
+    CANVAS_HEIGHT = 700
 
-    def cleanFiles():
-        global grayscalePath, darkPath, vividPath
-        files = [grayscalePath, darkPath, vividPath]
-        for path in files:
-            if os.path.exists(path):
-                os.remove(path)
     def onExit():
-        # Clean files
-        cleanFiles()
         root.quit()
         
+    def drawPixels(pixels):
+        global cv, cvImg
+        global CANVAS_WIDTH, CANVAS_HEIGHT
+        cv.delete(ALL) # Clean up canvas
+        # Reset image
+        cvImg = PhotoImage(width=CANVAS_WIDTH,height=CANVAS_HEIGHT)
+        cv.create_image((CANVAS_WIDTH//2, CANVAS_HEIGHT//2), image=cvImg, state="normal")
+        h = len(pixels) # image height
+        w = len(pixels[0]) # image width
+        colAlign = CANVAS_WIDTH // 2 - w // 2 # Align image to be center
+        # Draw each pixel 
+        for row in range(h):
+            for col in range(w):
+                color = "#%02x%02x%02x" % pixels[row][col] # Convert (r,g,b) to hexa
+                xx, yy = colAlign+col, row
+                cvImg.put(color, (xx,yy))
+
     def imgSelect():
-        global label, cv
-        global grayscale, dark, vivid, original
-        global grayscalePath, darkPath, vivid
-        global processedImg
-        cleanFiles()
-        processedImg = None
-        cv.delete(ALL)
-        if label:
-            label.destroy()
-        root.filename = filedialog.askopenfilename(initialdir="/",title="Select an image",filetypes=(("bmp files", "*.bmp"),))
+        global label, cv, cvImg
+        global original, grayscale, dark, vivid
+        # Open dialog to choose file
+        root.filename = filedialog.askopenfilename(initialdir=".",title="Select an image",filetypes=(("bmp files", "*.bmp"),))
         if root.filename:
+            # Process image byte by byte
             rawImg = Bmp24BitImage(root.filename)
-            grayscaleRaw = rawImg.grayscale()
-            darkRaw = rawImg.darken()
-            vividRaw = rawImg.vivid()
+            original = rawImg.original()
+            grayscale = rawImg.grayscale()
+            dark = rawImg.darken()
+            vivid = rawImg.vivid()
 
-            with open(grayscalePath, 'wb') as f:
-                f.write(grayscaleRaw)
-            with open(darkPath, 'wb') as f:
-                f.write(darkRaw)
-            with open(vividPath, 'wb') as f:
-                f.write(vividRaw)
+            # Reverse pixels because the way bmp format stores pixels is from last row to the beginning row of image
+            original.reverse()
+            grayscale.reverse()
+            dark.reverse()
+            vivid.reverse()
+
+            # Draw original image
+            drawPixels(original)
             
-            #original = ImageTk.PhotoImage(Image.open(root.filename))
-            #label = Label(image=original, width=700)
-            #label.pack()
-            pixels = rawImg.getAllPixels()
-            print(len(pixels))
-            print(len(pixels[0]))
-            y = 0
-            for row in range(len(pixels)-1, -1, -1):
-                for col in range(len(pixels[0])):
-                    color = "#%02x%02x%02x" % pixels[row][col]
-                    #cv.create_rectangle((100+x, 50+col)*2, outline="", fill=color)
-                    xx, yy = 100+col, 50+y
-                    cv.create_line(xx, yy, xx+1,yy, fill=color)
-                y += 1
-        
-    def selectProcessedImg(path):
-        global label, cv
-        global processedImg
-        cv.delete(ALL)
-        if label:
-            label.destroy()
-        try:
-            processedImg = ImageTk.PhotoImage(Image.open(path))
-        except:
-            pass
-        if processedImg:
-            label = Label(image=processedImg, width=700)
-            label.pack()
+    
+    def selectProcessedImg(pixels):
+        drawPixels(pixels)
 
-                
+    # Buttons
     fileBtn = Button(root, text="Select BMP image", command=imgSelect)
-    fileBtn.pack()
+    originalBtn = Button(root, text="Original image", command=lambda: selectProcessedImg(original))
+    grayscaleBtn = Button(root, text="Make grayscale", command=lambda: selectProcessedImg(grayscale))
+    darkBtn = Button(root, text="Make darker", command=lambda: selectProcessedImg(dark))
+    vividBtn = Button(root, text="Make vivid", command=lambda: selectProcessedImg(vivid))
 
-    originalBtn = Button(root, text="Original image", command=lambda: selectProcessedImg(root.filename))
+    # Display buttons
+    fileBtn.pack()
     originalBtn.pack()
-    grayscaleBtn = Button(root, text="Make grayscale", command=lambda: selectProcessedImg(grayscalePath))
     grayscaleBtn.pack()
-    darkBtn = Button(root, text="Make darker", command=lambda: selectProcessedImg(darkPath))
     darkBtn.pack()
-    vividBtn = Button(root, text="Make vivid", command=lambda: selectProcessedImg(vividPath))
     vividBtn.pack()
 
-    
-    cv = Canvas(root, width=800, height=800)
+    # Canvas to draw image byte by byte
+    cv = Canvas(root, width=CANVAS_WIDTH, height=CANVAS_HEIGHT)
     cv.pack()
-    #for x in range(100):
-    #    cv.create_rectangle((x,100)*2, outline="",fill="red")
+    
     root.protocol("WM_DELETE_WINDOW", onExit)
     root.mainloop()
     

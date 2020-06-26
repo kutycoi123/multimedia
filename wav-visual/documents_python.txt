@@ -1,0 +1,49 @@
+Execution details:
+  1. Operating systems required: Window
+  2. Execution file: wav.exe
+  3. How to run program:
+     - Just double blick the file wav.exe
+     - Or open terminal and run:  .\wav.exe
+     Note: The program takes few seconds to start because I compressed and installed
+     source code and libraries code into just one executable file, which might be better
+     than submitting a big folder with unnecessary files.
+  4. How to run source code:
+     - Source code named: wav.py
+     - Language required: python3
+     - Command to run source code:
+       	       python3 wav.py
+
+Source code details:
+  1. Process wav file:
+     - The main logic to read and process wav file is implemented inside function named
+     "readSamples"
+     - This function is used to mainly read the raw wav file byte by byte, and extract all
+     the samples from wav file and returns these samples with other necessary information
+     - It first reads the header information such as "bytesPerSample", "blockAlign",
+     "subchunk1Size", "sampleRate" to determine where the samples data start and how long
+     each sample is.
+     - Then it simply iterates through the samples data, convert each sample into decimal value based on the number of bits used (16 and 8 bits),
+     calculate the total number of samples, the maximum value and the maximum absolute value
+     - After all samples data are extracted, I called two functions "fadeIn" and "fadeOut"  to make first half samples faded in and the other half faded out
+       + For "fadeIn" function, I just used linear fade in algorithm which means I multiply each sample by a "factor" and this factor increases for every sample
+       + For "fadeOut" function, it just basically apply "fadeIn" for the reverse order of sample\
+  2. GUI code:
+     - ALl the GUI code are put under: if __name__ == "__main__"
+       which seves as the main function for the program
+     - The main function to allow you choose file and to draw waveform on screen is "chooseFile".
+       This function, when triggered, first opens a dialog for you to choose wav file. Then it calls "readSamples" to extract samples data and useful information
+       After get samples data, it calculates all the points needed to draw the wavefore by scaling all points to fit into the canvas window with size 1200x600
+       Finally, it draws all the lines on canvas
+     - Note: For large wav files, it might take 1-2 seconds to finish drawing on screen because drawing thounsands of lines is quite expensive
+  3. Program flow:
+     - Once you clicked "Choose file" button, "chooseFile" function is triggered.
+     - It opens a dialog file for you to choose a wav file.
+     - As soon as you choose a file and click Ok, it called "readSamples" with the chosen file.
+     	  + "readSamples" function reads the file byte by byte, stores all the samples data, makes first half of samples faded in and the other half faded out, then
+	  returns samples data, total number of samples, maximum sample value and maximum absolute value
+     - It updates the label with these information. Then it updates and draws all the points of waveform on the screen
+  4. Summary:
+     - "readSamples" does the main logic to read and process wav file
+     - "chooseFile" is the handler to control the program flow, by allowing you to select a file, called "readSamples" to extract samples data and then display waveform
+     on screen
+     - Other functions and codes are just utility codes to calculate byte values of wav file header and to perform GUI programming.

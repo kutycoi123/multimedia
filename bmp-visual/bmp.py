@@ -7,7 +7,7 @@ from math import ceil
 
 def bytesToInt(bytes, byteorder='little', signed=False):
     return int.from_bytes(bytes, byteorder=byteorder, signed=signed)
-def clip(value, lowerbound, higherbound):
+def myround(value, lowerbound, higherbound):
     if value < lowerbound:
         return lowerbound
     if value > higherbound:
@@ -28,7 +28,7 @@ class Bmp24BitImage():
         self.bytesPerRow = ceil((self.width * self.bytesPerPixel) / 4) * 4
         self.extraBytesPerRow = self.bytesPerRow - (self.width * self.bytesPerPixel)
         
-    def grayscale_24bit(self):
+    def grayscale(self):
         grayscale = self.img[:]
         i = self.dataOffset
         while i < len(self.img):
@@ -39,27 +39,6 @@ class Bmp24BitImage():
                 c = int(0.30*r + 0.59*g + 0.11*b)
                 grayscale[k] = grayscale[k+1] = grayscale[k+2] = c
             i += self.bytesPerRow
-        return grayscale
-        
-    def grayscale(self):
-        """ Convert 24-bit bmp image to a grayscale image"""
-        grayscale = self.img[:self.dataOffset]
-        grayscale[2:6] = (0).to_bytes(4, byteorder='little') # file size
-        grayscale[28:30] = (8).to_bytes(2, byteorder='little') # bit per pixel
-        grayscale[46:50] = (256).to_bytes(4, byteorder='little') # color used
-        # Construct color pallet or color table
-        for i in range(256):
-            grayscale += (i).to_bytes(1, byteorder='little') * 4
-        
-        i = self.dataOffset
-        while i < len(self.img):
-            for k in range(i, i + self.width * self.bytesPerPixel, self.bytesPerPixel): # loop through all bytes on a row, except for extra bytes for padding
-                grayscale += (int(0.299 * self.img[k] + 0.587 * self.img[k+1] + 0.114 * self.img[k+2])).to_bytes(1, byteorder='little')
-            if self.extraBytesPerRow > 0:
-                grayscale += (0).to_bytes(self.extraBytesPerRow, byteorder='little') # for row padding 
-            i += self.bytesPerRow
-        newImgSize = self.height * (self.width + self.extraBytesPerRow) # We only used 1-byte for each grayscale pixel plus some extra bytes for row padding
-        grayscale[34:38] = (newImgSize).to_bytes(4, byteorder='little') # Image size
         return grayscale
 
     def darken(self):
@@ -83,9 +62,9 @@ class Bmp24BitImage():
         b = 50
         while i < len(self.img):
             for k in range(i, i + self.width * self.bytesPerPixel, self.bytesPerPixel):
-                vivid[k] = clip(int(a*self.img[k] + b), 0, 255)
-                vivid[k+1] = clip(int(a*self.img[k+1] + b), 0, 255)
-                vivid[k+2] = clip(int(a*self.img[k+2] + b), 0, 255)
+                vivid[k] = myround(int(a*self.img[k] + b), 0, 255)
+                vivid[k+1] = myround(int(a*self.img[k+1] + b), 0, 255)
+                vivid[k+2] = myround(int(a*self.img[k+2] + b), 0, 255)
             i += self.bytesPerRow
         return vivid
         
@@ -127,25 +106,28 @@ if __name__ == "__main__":
         global label
         global grayscale, dark, vivid, original
         global grayscalePath, darkPath, vivid
+        global processedImg
         cleanFiles()
+        processedImg = None
         if label:
             label.destroy()
         root.filename = filedialog.askopenfilename(initialdir="/",title="Select an image",filetypes=(("bmp files", "*.bmp"),))
-        rawImg = Bmp24BitImage(root.filename)
-        grayscaleRaw = rawImg.grayscale_24bit()
-        darkRaw = rawImg.darken()
-        vividRaw = rawImg.vivid()
+        if root.filename:
+            rawImg = Bmp24BitImage(root.filename)
+            grayscaleRaw = rawImg.grayscale()
+            darkRaw = rawImg.darken()
+            vividRaw = rawImg.vivid()
 
-        with open(grayscalePath, 'wb') as f:
-            f.write(grayscaleRaw)
-        with open(darkPath, 'wb') as f:
-            f.write(darkRaw)
-        with open(vividPath, 'wb') as f:
-            f.write(vividRaw)
+            with open(grayscalePath, 'wb') as f:
+                f.write(grayscaleRaw)
+            with open(darkPath, 'wb') as f:
+                f.write(darkRaw)
+            with open(vividPath, 'wb') as f:
+                f.write(vividRaw)
             
-        original = ImageTk.PhotoImage(Image.open(root.filename))
-        label = Label(image=original, width=700)
-        label.pack()
+            original = ImageTk.PhotoImage(Image.open(root.filename))
+            label = Label(image=original, width=700)
+            label.pack()
         
     def selectProcessedImg(path):
         global label
@@ -164,6 +146,8 @@ if __name__ == "__main__":
     fileBtn = Button(root, text="Select BMP image", command=imgSelect)
     fileBtn.pack()
 
+    originalBtn = Button(root, text="Original image", command=lambda: selectProcessedImg(root.filename))
+    originalBtn.pack()
     grayscaleBtn = Button(root, text="Make grayscale", command=lambda: selectProcessedImg(grayscalePath))
     grayscaleBtn.pack()
     darkBtn = Button(root, text="Make darker", command=lambda: selectProcessedImg(darkPath))

@@ -1,5 +1,5 @@
 Execution details:
-  1. Operating system required: Window 
+  1. Operating system required: Linux(Ubuntu)
   2. Execution file: bmp.exe
   3. How to run program:
      - Just double click the file bmp.exe and program will run.
@@ -14,7 +14,7 @@ Execution details:
      - Command to run source code:
        	   python3 bmp.py
      - Note: If you don't have tkinter package, you can simply install it by this command:
-       	     sudo apt-get install python3-tk
+    	   sudo apt-get install python3-tk
 	     
 	   
 Source code details:
@@ -47,10 +47,12 @@ Source code details:
 	 The above equation is the one introduced in the book "Computer vision: Algorithms and Applications" by Richard Szeliski
        + The result actually could be more than 255 or less than 0 so I defined a function named "myround" to round the value back to 0 and 255
        + It returns an array of pixels (r,g,b)
+       
   2. GUI code
      - All the GUI code is put under: if __name__ == "__main__"
        This serves as a main function for the entire program
      - GUI contains 5 buttons which are "fileBtn", "originalBtn", "grayscaleBtn", "darkBtn", "vividBtn" and a label to display image
+     
   3. Program flow:
      - When you first click "Select BMP image":
        	  1. "fileBtn" is clicked, which triggers function "imgSelect"

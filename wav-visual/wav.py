@@ -94,7 +94,9 @@ if __name__ == "__main__":
         global lines
         global totalSamplesLbl, maxValueLbl, maxAbsValueLbl
         # Choose file
-        root.filename = filedialog.askopenfilename(initialdir="/", title="Select wav file", filetypes=(("wav files", "*.wav"),))
+        root.filename = filedialog.askopenfilename(initialdir=".", title="Select wav file", filetypes=(("wav files", "*.wav"),))
+        if not root.filename:
+            return
         # Extract sample data
         samples, totalSamples, maxValue, maxAbsValue  = readSamples(root.filename)
         # Update label

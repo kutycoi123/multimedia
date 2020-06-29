@@ -44,7 +44,11 @@ class Bmp24BitImage():
         return pixels
         
     def grayscale(self):
-        """Return grayscale pixels"""
+        """ Return grayscale pixels
+            Formula: c = 30*r + 0.59*b + 0.11*b
+                     (r,g,b) = (c,c,c)
+        """
+        
         pixels = []
         i = self.dataOffset
         while i < len(self.img):
@@ -61,7 +65,9 @@ class Bmp24BitImage():
         return pixels
 
     def darken(self):
-        """ Return darker pixels """
+        """ Return darker pixels 
+            Formula: (r,g,b) = (r*0.5, g*0.5, b*0.5)
+        """
         pixels = []
         i = self.dataOffset
         while i < len(self.img):
@@ -76,7 +82,10 @@ class Bmp24BitImage():
         return pixels
 
     def vivid(self):
-        """ Return vivid pixels """
+        """ Return vivid pixels 
+            Formula: alpha = 2.2, beta = 50
+                     (r,g,b) = (r,g,b) * alpha + beta
+        """
         pixels = []
         i = self.dataOffset
         alpha = 2.2

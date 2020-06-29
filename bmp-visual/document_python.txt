@@ -1,20 +1,20 @@
 Execution details:
   1. Operating system required: Linux(Ubuntu)
-  2. Execution file: bmp.exe
+  2. Execution file: bmp
   3. How to run program:
-     - Just double click the file bmp.exe and program will run.
-     - Or open terminal and run: .\bmp.exe
-     - Note: The program takes few seconds to start because I installed everything
+     - Just double click the file bmp and program will run.
+     - Or open terminal inside q3 folder and run: ./bmp
+     - Note: The program might take few seconds to start because I installed everything
      into just one executable file instead of submitting a large folder of program,so
      that it might be more convenient for you to test.
   4. How to run source code:
      - Source code named: bmp.py
-     - Language required: python3
-     - Packages required: tkinter(automatically installed with python3.8)
+     - Language required: python3(version 3.8 is highly preferred)
+     - Packages required: tkinter
+       + You can quickly install tkinter by this command:
+       	   sudo apt-get install python3-tk
      - Command to run source code:
        	   python3 bmp.py
-     - Note: If you don't have tkinter package, you can simply install it by this command:
-    	   sudo apt-get install python3-tk
 	     
 	   
 Source code details:

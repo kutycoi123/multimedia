@@ -2,6 +2,15 @@ from tkinter import *
 from tkinter import filedialog
 from collections import defaultdict
 from heapq import heappush, heappop
+
+
+def convert_to_nbits(nBits):
+	def convert(n):
+		binary = format(n, 'b')
+		binary = "0"*(nBits-len(binary)) + binary
+		return binary
+	return convert
+
 class Node:
 	def __init__(self, freq, symbol):
 		self.freq = freq
@@ -17,7 +26,10 @@ class Huffman:
 		self.root = None
 		self.code_dict = defaultdict(str)
 		self.freq = defaultdict(int)
+		self.total_encoded_length = 0
 
+	def extract_data(self):
+		pass
 	def encode(self):
 		self.symbols = [c for c in self.input]
 		self.compute_freq()
@@ -63,11 +75,45 @@ class Huffman:
 	def encode_string(self):
 		for sym in self.symbols:
 			self.encoded.append(self.code_dict[sym])
+			self.total_encoded_length += len(self.code_dict[sym])
 
 	def get_encoded_string(self):
 		res = " ".join(self.encoded)
 		return res
 
+
+class LZW:
+	def __init__(self, input):
+		self.input = input
+		self.symbols = []
+		self.encoded = []
+		self.code_dict = defaultdict(str)
+		self.code_dict_length = 0		
+		self.total_encoded_length = 0
+
+	def encode(self):
+		if self.encoded: # Already encode
+			return
+		l = len(self.input)
+		idx = 1
+		s = str(self.input[0])
+		while idx < l:
+			c = str(self.input[idx])
+			#print(int.from_bytes(c, byteorder='little', signed=True))
+			if self.code_dict[s+c]:
+				s = s + c
+			else:
+				self.encoded.append(self.code_dict[s])
+				#print(s, self.code_dict[s])
+				self.total_encoded_length += len(format(self.code_dict_length, 'b'))
+				self.code_dict_length += 1
+				self.code_dict[s+c] = str(self.code_dict_length)
+				s = c
+			idx += 1
+		self.encoded.append(self.code_dict[s])
+		self.total_encoded_length += len(format(self.code_dict_length, 'b'))
+		self.code_dict_length += 1
+		print("LZW total dict length:", self.code_dict_length)
 
 
 def readSampleRate(offset):
@@ -94,31 +140,24 @@ def readSamples(path):
 	sampleRate = readSampleRate(offset)
 	bytesPerSample = readBitsPerSample(offset)/8
 	blockAlign = readBlockAlign(offset)
+	binaryConverter = convert_to_nbits(blockAlign * 8)
 	subchunk1Size = readSubchunk1Size(offset)
     
-	totalSamples = 0 # Calculate total number of samples
-	maxValue = -(2**16) # maxumum sample value
-	maxAbsValue = 0 # maximum absolute value
-	samples = [] 
 	dataOffset = 20 + subchunk1Size + 8 # where samples data begin
+
+	samples = []
+
     # Loop through samples data
 	while dataOffset < len(offset):
 		sample = offset[dataOffset:(dataOffset+blockAlign)]
 		sampleVal = 0
-		if (bytesPerSample >= 2): #16-bit sample, 2's-complement value -32768 to 32767
-			sampleVal = int.from_bytes(sample, byteorder='little', signed=True)
-		else: #8-bit sample, unsigned value 0 to 255
-			sampleVal = int.from_bytes(sample, byteorder='little')
-            
-		if sampleVal > maxValue:
-			maxValue = sampleVal
-		if abs(sampleVal) > maxAbsValue:
-			maxAbsValue = abs(sampleVal)
-            
-		samples.append(sampleVal)
+		sampleVal = int.from_bytes(sample, byteorder='big')
+		samples.append(binaryConverter(sampleVal))
 		dataOffset += blockAlign
-		totalSamples += 1
-	return samples, totalSamples, maxValue, maxAbsValue
+		# totalSamples += 1
+
+	return samples, offset[44:]
+
 
 
     
@@ -134,22 +173,45 @@ if __name__ == "__main__":
 	root.title("Q2")
 	root.geometry(WINDOW_SIZE)
 
-        # Event handler
+    # Event handler
 	def chooseFile():
 		global cv
 		global lines
-		global totalSamplesLbl, maxValueLbl, maxAbsValueLbl
+		global huffmanRatioLbl, lzwRatioLbl
         # Choose file
 		root.filename = filedialog.askopenfilename(initialdir=".", title="Select wav file", filetypes=(("wav files", "*.wav"),))
         # Extract sample data
-		samples, totalSamples, maxValue, maxAbsValue  = readSamples(root.filename)
-
-		huffman = Huffman(samples)
+		data, rawData = readSamples(root.filename)
+		length_before = len(rawData) * 8 # in bits
+		huffman = Huffman(data)
+		lzw = LZW(data)
 		huffman.encode()
-		#print(huffman.get_encoded_string())
+		lzw.encode()
+
+		print("Data length:",  length_before)
+		print("Huffman:", huffman.total_encoded_length)
+		print("Huffman ratio:", length_before / huffman.total_encoded_length)
+		print("LZW:", lzw.total_encoded_length)
+		print("LZW ratio:", length_before  / lzw.total_encoded_length)
+
+		huffmanRatio = length_before / huffman.total_encoded_length
+		lzwRatio = length_before / lzw.total_encoded_length
+		huffmanRatioLbl.set("Huffman compression ratio: " + str(huffmanRatio))
+		lzwRatioLbl.set("Lzw compression ratio: " + str(lzwRatio))
+
         # Update label
+
 	chooseFileBtn = Button(root, text="Choose file", command=chooseFile)
 	chooseFileBtn.pack()
+
+	# # Label
+	huffmanRatioLbl = StringVar()
+	huffmanRatioLbl.set("Huffman compression ratio:")
+	Label(root, textvariable=huffmanRatioLbl).pack()
+
+	lzwRatioLbl = StringVar()
+	lzwRatioLbl.set("Lzw compression ratio:")
+	Label(root, textvariable=lzwRatioLbl).pack()
 
 	root.mainloop()
         

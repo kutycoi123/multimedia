@@ -429,31 +429,32 @@ if __name__ == "__main__":
 
     def imgSelect():
         global label, cv, cvImg
-        global original, grayscale, dark, vivid
+        root.imgPath = filedialog.askopenfilename(initialdir=".",title="Select a IMG image",
+             filetypes=(("IMG files", "*.IMG"),))
+        if root.imgPath:
+            compressor = Compressor(None)
+            pixels = compressor.decompress(root.imgPath)
+            drawPixels(pixels)
+
+    def bmpSelect():
+        global label, cv, cvImg
         # Open dialog to choose file
-        root.filename = filedialog.askopenfilename(initialdir=".",title="Select an image",
-        	filetypes=(("bmp files", "*.bmp"),("IMG files", "*.IMG"),))
-        if root.filename:
-        	ext = os.path.splitext(root.filename)[1]
-        	if ext == '.bmp':
-	            # Process image byte by byte
-	            rawImg = Bmp24BitImage(root.filename)
-	            #original = rawImg.original()
-	            compressor = Compressor(rawImg)
-	            compressor.compress()
-	        elif ext == ".IMG" :
-	        	depressor = Compressor(None)
-	        	pixels = depressor.decompress(root.filename)
-	        	#print(pixels[0], len(pixels), len(pixels[0]));return
-	        	drawPixels(pixels)
-	        else:
-	        	print("File not supported")
+        root.bmpPath = filedialog.askopenfilename(initialdir=".",title="Select a BMP image",
+        	filetypes=(("bmp files", "*.bmp"),))
 
-    fileBtn = Button(root, text="Select BMP image", command=imgSelect)
+        if root.bmpPath:
+            # Process image byte by byte
+            rawImg = Bmp24BitImage(root.bmpPath)
+            #original = rawImg.original()
+            compressor = Compressor(rawImg)
+            compressor.compress()
 
+    bmpBtn = Button(root, text="Select BMP image", width=25, command=bmpSelect)
+    imgBtn = Button(root, text="Select IMG image", width=25, command=imgSelect)
 
     # Display buttons
-    fileBtn.pack()
+    bmpBtn.pack()
+    imgBtn.pack()
 
     # Canvas to draw image byte by byte
     cv = Canvas(root, width=CANVAS_WIDTH, height=CANVAS_HEIGHT)

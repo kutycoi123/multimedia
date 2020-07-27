@@ -106,7 +106,22 @@ class Bmp24BitImage():
         self.bytesPerPixel = self.bitsPerPixel // 8
         self.bytesPerRow = ceil((self.width * self.bytesPerPixel) / 4) * 4
         self.extraBytesPerRow = self.bytesPerRow - (self.width * self.bytesPerPixel)
-        
+
+    def original(self):
+        pixels = []
+        i = self.dataOffset
+        while i < len(self.img):
+            rowPixels = []
+            for k in range(i, i + self.width * self.bytesPerPixel, self.bytesPerPixel):
+                b = self.img[k]
+                g = self.img[k+1]
+                r = self.img[k+2]
+                rowPixels.append((r,g,b))
+            i += self.bytesPerRow
+            pixels.append(rowPixels)
+        pixels.reverse()
+        return pixels
+
     def getChannels(self):
     	R, G, B = [], [], []
     	i = self.dataOffset
@@ -227,6 +242,7 @@ class Compressor:
 
 		# Save all data on file IMG
 		self.save(y, cb, cr, yEncoded, cbEncoded, crEncoded)
+
 
 	def save(self, y, cb, cr, yEncoded, cbEncoded, crEncoded):
 		""" Save image data as IMG file """
@@ -388,31 +404,41 @@ class Compressor:
 if __name__ == "__main__":
     # Init root
     root = Tk()
-    root.title("Q3")
-    root.geometry("1000x700")
+    root.title("Q2")
+    root.geometry("1500x700")
     # Init global variables
-    CANVAS_WIDTH = 900
-    CANVAS_HEIGHT = 700
+    CANVAS_WIDTH = 1500
+    CANVAS_HEIGHT = 1000
 
     def onExit():
         root.quit()
         
-    def drawPixels(pixels):
+    def drawLeftImage(pixels):
         global cv, cvImg
-        global CANVAS_WIDTH, CANVAS_HEIGHT
         cv.delete(ALL) # Clean up canvas
         # Reset image
         cvImg = PhotoImage(width=CANVAS_WIDTH,height=CANVAS_HEIGHT)
-        cv.create_image((CANVAS_WIDTH//2, CANVAS_HEIGHT//2), image=cvImg, state="normal")
+        cv.create_image((CANVAS_WIDTH // 2, CANVAS_HEIGHT // 2), image=cvImg, state="normal")
         h = len(pixels) # image height
         w = len(pixels[0]) # image width
-        colAlign = CANVAS_WIDTH // 2 - w // 2 # Align image to be center
-        # Draw each pixel 
+        colAlign = CANVAS_WIDTH // 2 - w - 50
         for row in range(h):
             for col in range(w):
                 color = "#%02x%02x%02x" % pixels[row][col] # Convert (r,g,b) to hexa
-                xx, yy = colAlign+col, row
+                xx, yy = colAlign + col, row
                 cvImg.put(color, (xx,yy))
+
+    def drawRightImage(pixels):
+        global cv, cvUncompressedImg
+        cvUncompressedImg = PhotoImage(width=CANVAS_WIDTH, height=CANVAS_HEIGHT)
+        cv.create_image((CANVAS_WIDTH + 50, CANVAS_HEIGHT // 2), image=cvUncompressedImg, state="normal")
+        h = len(pixels)
+        w = len(pixels[0])
+        for row in range(h):
+            for col in range(w):
+                color = "#%02x%02x%02x" % pixels[row][col] # Convert (r,g,b) to hexa
+                xx, yy = col, row
+                cvUncompressedImg.put(color, (xx,yy))
 
     def updateLabel(txt):
     	global lblText, label
@@ -435,7 +461,7 @@ if __name__ == "__main__":
             updateLabel("Uncompressing...")
             pixels = compressor.uncompress(root.imgPath)
             updateLabel("Drawing uncompressed image...")
-            drawPixels(pixels)
+            drawLeftImage(pixels)
             updateLabel("Finish drawing")
 
     def bmpSelect():
@@ -449,13 +475,24 @@ if __name__ == "__main__":
         if root.bmpPath:
             # Process image byte by byte
             rawImg = Bmp24BitImage(root.bmpPath)
+            originalPixels = rawImg.original()
             updateLabel("Compressing...")
             #original = rawImg.original()
             compressor = Compressor(rawImg)
             compressor.compress()
-            updateLabel("Finish compressing. Checkout compressed file: " + compressor.compressedImgPath)
             compressionRatio = compressor.compressionRatio()
+            #updateLabel("Finish compressing. Checkout compressed file: " + compressor.compressedImgPath)
+            updateLabel("Finished compressing. Drawing original image...")
             updateRatio("Compression ratio: " + str(compressionRatio))
+            drawLeftImage(originalPixels)
+            updateLabel("Decompressing...")
+            uncompressedPixels = compressor.uncompress(compressor.compressedImgPath)
+            updateLabel("Drawing uncompressed image...")
+            drawRightImage(uncompressedPixels)
+            updateLabel("Finish drawing")
+
+
+
 
     # Buttons
     bmpBtn = Button(root, text="Select BMP image", width=25, command=bmpSelect)

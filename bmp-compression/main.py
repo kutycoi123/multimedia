@@ -426,6 +426,8 @@ if __name__ == "__main__":
 
     def imgSelect():
         global label, cv, cvImg
+        updateLabel("")
+        updateRatio("Compression ratio: ")
         root.imgPath = filedialog.askopenfilename(initialdir=".",title="Select a IMG image",
              filetypes=(("IMG files", "*.IMG"),))
         if root.imgPath:

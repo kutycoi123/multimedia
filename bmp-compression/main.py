@@ -96,7 +96,7 @@ class Bmp24BitImage():
         if (not path.endswith('.bmp')):
             raise Exception("File must be bmp")
         self.path = path    
-        self.img = self.__readImg(path)
+        self.img = readImg(path)
         self.fileSize = bytesToInt(self.img[2:6])
         self.width = bytesToInt(self.img[18:22], signed=True)
         self.height = bytesToInt(self.img[22:26], signed=True)
@@ -107,20 +107,6 @@ class Bmp24BitImage():
         self.bytesPerRow = ceil((self.width * self.bytesPerPixel) / 4) * 4
         self.extraBytesPerRow = self.bytesPerRow - (self.width * self.bytesPerPixel)
         
-    def original(self):
-        pixels = []
-        i = self.dataOffset
-        while i < len(self.img):
-            rowPixels = []
-            for k in range(i, i + self.width * self.bytesPerPixel, self.bytesPerPixel):
-                b = self.img[k]
-                g = self.img[k+1]
-                r = self.img[k+2]
-                rowPixels.append((r,g,b))
-            i += self.bytesPerRow
-            pixels.append(rowPixels)
-        return pixels
-
     def getChannels(self):
     	R, G, B = [], [], []
     	i = self.dataOffset
@@ -139,18 +125,11 @@ class Bmp24BitImage():
     	B.reverse()
     	return R, G, B
 
-    def __readImg(self, path):
-        img = bytearray()
-        with open(path, "rb") as f:
-            byte = f.read(1)
-            while byte:
-                img += byte
-                byte = f.read(1)
-        return img
-
 class Compressor:
 	def __init__(self, bmpImg):
 		self.bmpImg = bmpImg
+		if bmpImg:
+			self.compressedImgPath = os.path.splitext(self.bmpImg.path)[0] + ".IMG"
 		self.quantization_table = [[1,1,2,4,8,16,32,64],
 									[1,1,2,4,8,16,32,64],
 									[2,2,2,4,8,16,32,64],
@@ -162,8 +141,9 @@ class Compressor:
 		self.blockSize = 8
 		self.dct = self.computeDct(self.blockSize)
 
-	def decompress(self, path):
-		""" Perform image decompression """
+
+	def uncompress(self, path):
+		""" Perform image uncompression """
 
 		# Read images byte by byte
 		img = readImg(path)
@@ -269,7 +249,7 @@ class Compressor:
 		fileBytes += int(len(crEncoded)).to_bytes(3, byteorder='big')
 		fileBytes += crEncoded
 
-		f = open(os.path.splitext(self.bmpImg.path)[0] + ".IMG", "wb+")
+		f = open(self.compressedImgPath, "wb+")
 		f.write(fileBytes)
 		f.close()
 
@@ -427,17 +407,26 @@ if __name__ == "__main__":
                 xx, yy = colAlign+col, row
                 cvImg.put(color, (xx,yy))
 
+    def updateLabel(txt):
+    	global lblText, label
+    	lblText.set(txt)
+    	label.update_idletasks()
+
     def imgSelect():
         global label, cv, cvImg
         root.imgPath = filedialog.askopenfilename(initialdir=".",title="Select a IMG image",
              filetypes=(("IMG files", "*.IMG"),))
         if root.imgPath:
             compressor = Compressor(None)
-            pixels = compressor.decompress(root.imgPath)
+            updateLabel("Uncompressing...")
+            pixels = compressor.uncompress(root.imgPath)
+            updateLabel("Drawing uncompressed image...")
             drawPixels(pixels)
+            updateLabel("Finish drawing")
 
     def bmpSelect():
         global label, cv, cvImg
+        updateLabel("")
         # Open dialog to choose file
         root.bmpPath = filedialog.askopenfilename(initialdir=".",title="Select a BMP image",
         	filetypes=(("bmp files", "*.bmp"),))
@@ -445,9 +434,11 @@ if __name__ == "__main__":
         if root.bmpPath:
             # Process image byte by byte
             rawImg = Bmp24BitImage(root.bmpPath)
+            updateLabel("Compressing...")
             #original = rawImg.original()
             compressor = Compressor(rawImg)
             compressor.compress()
+            updateLabel("Finish compressing. Checkout compressed file: " + compressor.compressedImgPath)
 
     bmpBtn = Button(root, text="Select BMP image", width=25, command=bmpSelect)
     imgBtn = Button(root, text="Select IMG image", width=25, command=imgSelect)
@@ -455,6 +446,11 @@ if __name__ == "__main__":
     # Display buttons
     bmpBtn.pack()
     imgBtn.pack()
+
+    # Label
+    lblText = StringVar()
+    label = Label(root, textvariable=lblText)
+    label.pack()
 
     # Canvas to draw image byte by byte
     cv = Canvas(root, width=CANVAS_WIDTH, height=CANVAS_HEIGHT)

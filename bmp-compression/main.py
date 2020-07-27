@@ -125,19 +125,22 @@ class Bmp24BitImage():
     	B.reverse()
     	return R, G, B
 
+    def imageSize(self):
+    	return len(self.img)
+
 class Compressor:
 	def __init__(self, bmpImg):
 		self.bmpImg = bmpImg
 		if bmpImg:
 			self.compressedImgPath = os.path.splitext(self.bmpImg.path)[0] + ".IMG"
-		self.quantization_table = [[1,1,2,4,8,16,32,64],
-									[1,1,2,4,8,16,32,64],
-									[2,2,2,4,8,16,32,64],
-									[4,4,4,4,8,16,32,64],
-									[8,8,8,8,8,16,32,64],
-									[16,16,16,16,16,16,32,64],
-									[32,32,32,32,32,32,32,64],
-									[64,64,64,64,64,64,64,64]]
+		self.quantization_table = [[16,11,10,16,24,40,51,61],
+									[12,12,14,19,26,58,60,65],
+									[14,13,16,24,40,57,69,56],
+									[14,17,22,29,51,87,80,62],
+									[18,22,37,56,68,109,103,7],
+									[24,35,55,64,81,104,113,92],
+									[49,64,78,87,103,121,120,101],
+									[72,92,95,98,112,100,103,99]]
 		self.blockSize = 8
 		self.dct = self.computeDct(self.blockSize)
 
@@ -249,9 +252,11 @@ class Compressor:
 		fileBytes += int(len(crEncoded)).to_bytes(3, byteorder='big')
 		fileBytes += crEncoded
 
+		self.compressedImg = fileBytes
 		f = open(self.compressedImgPath, "wb+")
 		f.write(fileBytes)
 		f.close()
+
 
 
 	def quantize(self, x):
@@ -377,6 +382,9 @@ class Compressor:
 			i += 4
 		return decoded
 
+	def compressionRatio(self):
+		return self.bmpImg.imageSize() / len(self.compressedImg)
+
 if __name__ == "__main__":
     # Init root
     root = Tk()
@@ -411,6 +419,11 @@ if __name__ == "__main__":
     	lblText.set(txt)
     	label.update_idletasks()
 
+    def updateRatio(txt):
+    	global ratioText, ratioLabel
+    	ratioText.set(txt)
+    	ratioLabel.update_idletasks()
+
     def imgSelect():
         global label, cv, cvImg
         root.imgPath = filedialog.askopenfilename(initialdir=".",title="Select a IMG image",
@@ -426,6 +439,7 @@ if __name__ == "__main__":
     def bmpSelect():
         global label, cv, cvImg
         updateLabel("")
+        updateRatio("Compression ratio:")
         # Open dialog to choose file
         root.bmpPath = filedialog.askopenfilename(initialdir=".",title="Select a BMP image",
         	filetypes=(("bmp files", "*.bmp"),))
@@ -438,6 +452,8 @@ if __name__ == "__main__":
             compressor = Compressor(rawImg)
             compressor.compress()
             updateLabel("Finish compressing. Checkout compressed file: " + compressor.compressedImgPath)
+            compressionRatio = compressor.compressionRatio()
+            updateRatio("Compression ratio: " + str(compressionRatio))
 
     # Buttons
     bmpBtn = Button(root, text="Select BMP image", width=25, command=bmpSelect)
@@ -448,6 +464,10 @@ if __name__ == "__main__":
     imgBtn.pack()
 
     # Label
+    ratioText = StringVar()
+    ratioLabel = Label(root, textvariable=ratioText)
+    ratioLabel.pack()
+    ratioText.set("Compression ratio: ")
     lblText = StringVar()
     label = Label(root, textvariable=lblText)
     label.pack()

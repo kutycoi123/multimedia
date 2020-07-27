@@ -408,37 +408,24 @@ if __name__ == "__main__":
     root.geometry("1500x700")
     # Init global variables
     CANVAS_WIDTH = 1500
-    CANVAS_HEIGHT = 1000
+    CANVAS_HEIGHT = 700
 
     def onExit():
         root.quit()
-        
-    def drawLeftImage(pixels):
+    
+
+    def drawPixels(pixels, image, align=0, reset=False):
         global cv, cvImg
-        cv.delete(ALL) # Clean up canvas
-        # Reset image
-        cvImg = PhotoImage(width=CANVAS_WIDTH,height=CANVAS_HEIGHT)
-        cv.create_image((CANVAS_WIDTH // 2, CANVAS_HEIGHT // 2), image=cvImg, state="normal")
+        if reset:
+            cv.delete(ALL) # Clean up canvas
+        cv.create_image((CANVAS_WIDTH // 2, CANVAS_HEIGHT // 2), image=image, state="normal")
         h = len(pixels) # image height
         w = len(pixels[0]) # image width
-        colAlign = CANVAS_WIDTH // 2 - w - 50
-        for row in range(h):
+        for row in range(h): 
             for col in range(w):
                 color = "#%02x%02x%02x" % pixels[row][col] # Convert (r,g,b) to hexa
-                xx, yy = colAlign + col, row
-                cvImg.put(color, (xx,yy))
-
-    def drawRightImage(pixels):
-        global cv, cvUncompressedImg
-        cvUncompressedImg = PhotoImage(width=CANVAS_WIDTH, height=CANVAS_HEIGHT)
-        cv.create_image((CANVAS_WIDTH + 50, CANVAS_HEIGHT // 2), image=cvUncompressedImg, state="normal")
-        h = len(pixels)
-        w = len(pixels[0])
-        for row in range(h):
-            for col in range(w):
-                color = "#%02x%02x%02x" % pixels[row][col] # Convert (r,g,b) to hexa
-                xx, yy = col, row
-                cvUncompressedImg.put(color, (xx,yy))
+                xx, yy = align + col, row
+                image.put(color, (xx,yy))
 
     def updateLabel(txt):
     	global lblText, label
@@ -451,7 +438,8 @@ if __name__ == "__main__":
     	ratioLabel.update_idletasks()
 
     def imgSelect():
-        global label, cv, cvImg
+        global label, cv, cvUncompressedImg
+        cv.delete(ALL)
         updateLabel("")
         updateRatio("Compression ratio: ")
         root.imgPath = filedialog.askopenfilename(initialdir=".",title="Select a IMG image",
@@ -461,11 +449,13 @@ if __name__ == "__main__":
             updateLabel("Uncompressing...")
             pixels = compressor.uncompress(root.imgPath)
             updateLabel("Drawing uncompressed image...")
-            drawLeftImage(pixels)
+            cvUncompressedImg = PhotoImage(width=CANVAS_WIDTH, height=CANVAS_HEIGHT)
+            drawPixels(pixels, cvUncompressedImg, align=CANVAS_WIDTH // 2 - len(pixels[0]) // 2)
             updateLabel("Finish drawing")
 
     def bmpSelect():
-        global label, cv, cvImg
+        global label, cv, cvImg, cvUncompressedImg
+        cv.delete(ALL)
         updateLabel("")
         updateRatio("Compression ratio:")
         # Open dialog to choose file
@@ -484,11 +474,13 @@ if __name__ == "__main__":
             #updateLabel("Finish compressing. Checkout compressed file: " + compressor.compressedImgPath)
             updateLabel("Finished compressing. Drawing original image...")
             updateRatio("Compression ratio: " + str(compressionRatio))
-            drawLeftImage(originalPixels)
+            cvImg = PhotoImage(width=CANVAS_WIDTH,height=CANVAS_HEIGHT)
+            cvUncompressedImg = PhotoImage(width=CANVAS_WIDTH, height=CANVAS_HEIGHT)
+            drawPixels(originalPixels, cvImg, align=CANVAS_WIDTH // 2 - len(originalPixels[0]) - 50)
             updateLabel("Decompressing...")
             uncompressedPixels = compressor.uncompress(compressor.compressedImgPath)
             updateLabel("Drawing uncompressed image...")
-            drawRightImage(uncompressedPixels)
+            drawPixels(uncompressedPixels, cvUncompressedImg, align=CANVAS_WIDTH // 2 + 50)
             updateLabel("Finish drawing")
 
 

@@ -12,6 +12,7 @@ def convert_to_nbits(nBits):
 	return convert
 
 class Node:
+	""" Node for huffman tree """
 	def __init__(self, freq, symbol):
 		self.freq = freq
 		self.symbol = symbol
@@ -28,22 +29,23 @@ class Huffman:
 		self.freq = defaultdict(int)
 		self.total_encoded_length = 0
 
-	def extract_data(self):
-		pass
 	def encode(self):
+		""" Encode input """
 		self.symbols = [c for c in self.input]
 		self.compute_freq()
-		self.construct_codes()
+		self.construct_huffman_tree()
 		self.encode_string()
 
 	def compute_freq(self):
+		""" Compute frequency of each symbol """
 		l = len(self.symbols)
 		for sym in self.symbols:
 			self.freq[sym] += 1
 		for sym in self.freq:
 			self.freq[sym] = self.freq[sym] / l
 
-	def construct_codes(self):
+	def construct_huffman_tree(self):
+		""" Constuct Huffman tree """
 		h = [] #heap
 		index = 0
 		for sym in self.freq:
@@ -63,6 +65,7 @@ class Huffman:
 		self.assign_codes(node=self.root)
 
 	def assign_codes(self, node, code=""):
+		""" Assign code to each symbol """
 		isLeaf = (not node.left) and (not node.right)
 		if isLeaf:
 			self.code_dict[node.symbol] = code
@@ -73,11 +76,13 @@ class Huffman:
 				self.assign_codes(node.right, code + '1')
 
 	def encode_string(self):
+		""" Encode the entire string input """
 		for sym in self.symbols:
 			self.encoded.append(self.code_dict[sym])
 			self.total_encoded_length += len(self.code_dict[sym])
 
 	def get_encoded_string(self):
+		""" Return encoded string """
 		res = " ".join(self.encoded)
 		return res
 
@@ -92,6 +97,7 @@ class LZW:
 		self.total_encoded_length = 0
 
 	def encode(self):
+		""" Encode the input """
 		if self.encoded: # Already encode
 			return
 		l = len(self.input)
@@ -99,7 +105,6 @@ class LZW:
 		s = str(self.input[0])
 		while idx < l:
 			c = str(self.input[idx])
-			#print(int.from_bytes(c, byteorder='little', signed=True))
 			if self.code_dict[s+c]:
 				s = s + c
 			else:
@@ -113,7 +118,6 @@ class LZW:
 		self.encoded.append(self.code_dict[s])
 		self.total_encoded_length += len(format(self.code_dict_length, 'b'))
 		self.code_dict_length += 1
-		print("LZW total dict length:", self.code_dict_length)
 
 
 def readSampleRate(offset):
@@ -154,23 +158,19 @@ def readSamples(path):
 		sampleVal = int.from_bytes(sample, byteorder='big')
 		samples.append(binaryConverter(sampleVal))
 		dataOffset += blockAlign
-		# totalSamples += 1
 
-	return samples, offset[44:]
+	return samples, len(offset[44:]) * 8 # length in bits
 
 
 
     
 if __name__ == "__main__":
 
-
     # Init size
-	WINDOW_SIZE = "1400x700"
-	CANVAS_WIDTH = 1200
-	CANVAS_HEIGHT = 600
+	WINDOW_SIZE = "500x200"
 
 	root = Tk()
-	root.title("Q2")
+	root.title("Q1")
 	root.geometry(WINDOW_SIZE)
 
     # Event handler
@@ -181,18 +181,12 @@ if __name__ == "__main__":
         # Choose file
 		root.filename = filedialog.askopenfilename(initialdir=".", title="Select wav file", filetypes=(("wav files", "*.wav"),))
         # Extract sample data
-		data, rawData = readSamples(root.filename)
-		length_before = len(rawData) * 8 # in bits
+		data, length_before = readSamples(root.filename)
+		
 		huffman = Huffman(data)
 		lzw = LZW(data)
 		huffman.encode()
 		lzw.encode()
-
-		print("Data length:",  length_before)
-		print("Huffman:", huffman.total_encoded_length)
-		print("Huffman ratio:", length_before / huffman.total_encoded_length)
-		print("LZW:", lzw.total_encoded_length)
-		print("LZW ratio:", length_before  / lzw.total_encoded_length)
 
 		huffmanRatio = length_before / huffman.total_encoded_length
 		lzwRatio = length_before / lzw.total_encoded_length

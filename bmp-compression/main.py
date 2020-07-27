@@ -383,7 +383,6 @@ if __name__ == "__main__":
     root.title("Q3")
     root.geometry("1000x700")
     # Init global variables
-    original = grayscale = dark = vividP = [] # array of pixel color: [(r,g,b)]
     CANVAS_WIDTH = 900
     CANVAS_HEIGHT = 700
 
@@ -440,6 +439,7 @@ if __name__ == "__main__":
             compressor.compress()
             updateLabel("Finish compressing. Checkout compressed file: " + compressor.compressedImgPath)
 
+    # Buttons
     bmpBtn = Button(root, text="Select BMP image", width=25, command=bmpSelect)
     imgBtn = Button(root, text="Select IMG image", width=25, command=imgSelect)
 

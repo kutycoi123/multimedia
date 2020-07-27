@@ -3,33 +3,12 @@ from tkinter import filedialog
 from math import ceil, cos, pi
 import os
 
-# def dct(N):
-# 	C = [[0 for i in range(N)] for i in range(N)]
-# 	for i in range(N):
-# 		for j in range(N):
-# 			a = (1 / N) ** 0.5
-# 			if i != 0:
-# 				a = (2/N) ** 0.5
-# 			C[i][j] = a * cos(((2*j+1)*i*pi) / (2*N))
-# 	return C
-# def printMat(x)	:
-# 	for i in range(len(x)):
-# 		for j in range(len(x[0])):
-# 			print(x[i][j], end=' ')
-# 		print()
-def myround(value, lowerbound, higherbound):
-    """ Round value back to the interval between [lowerbound, higherbound]"""
-    if value < lowerbound:
-        return lowerbound
-    if value > higherbound:
-        return higherbound
-    return value
 
 def bytesToInt(bytes, byteorder='little', signed=False):
     """ Convert bytes to integer"""
     return int.from_bytes(bytes, byteorder=byteorder, signed=signed)
 
-def myround(value, lowerbound, higherbound):
+def clip(value, lowerbound, higherbound):
     """ Round value back to the interval between [lowerbound, higherbound]"""
     if value < lowerbound:
         return lowerbound
@@ -38,6 +17,7 @@ def myround(value, lowerbound, higherbound):
     return value
 
 def matrixMult(a, b):
+	""" Perform matrix multiplication """
 	a_h = len(a)
 	a_w = len(a[0])
 	b_h = len(b)
@@ -50,7 +30,12 @@ def matrixMult(a, b):
 			for k in range(a_w):
 				c[i][j] += a[i][k]*b[k][j]
 	return c			
+
 def transpose(a):
+	""" Perform matrix transpose """
+	""" A python one-line solution can be done by this: [*zip(*a)]
+		But this sol seems quite tricky so I just implemented the old-fashion algorithm
+	"""
 	h = len(a)
 	w = len(a[0])
 	res = [[0 for i in range(h)] for i in range(w)]
@@ -59,12 +44,53 @@ def transpose(a):
 			res[j][i] = a[i][j]
 	return res
 
-def maxMatrix(a):
-	# max_val = max(a[0])
-	# for i in range(1,len(a)):
-	# 	max_val = max(max(a[i]), max_val)
-	# return max_val
-	return [*zip(*a)]
+def rgb2ycbcr(R, G, B):
+	""" Convert RGB to YCbCr
+		Y = 0.299 R + 0.587 G + 0.114 B
+		Cb = - 0.1687 R - 0.3313 G + 0.5 B + 128
+		Cr = 0.5 R - 0.4187 G - 0.0813 B + 128
+	"""
+	h = len(R)
+	w = len(R[0])
+	Y = [[0 for i in range(w)] for i in range(h)]
+	Cb = [[0 for i in range(w)] for i in range(h)]
+	Cr = [[0 for i in range(w)] for i in range(h)]
+	for i in range(h):
+		for j in range(w):
+			r,g,b = R[i][j],G[i][j],B[i][j]
+			Y[i][j] = round(0.299*r + 0.587*g + 0.114*b)
+			Cb[i][j] = round(-0.1687*r-0.3313*g+0.5*b+128)
+			Cr[i][j] = round(0.5*r-0.4187*g-0.0813*b+128)
+	return Y, Cb, Cr
+
+def ycbcr2rgb(Y, Cb, Cr):
+	"""	Convert YCbCr to RGB
+		R = Y + 1.402 (Cr-128)
+		G = Y - 0.34414 (Cb-128) - 0.71414 (Cr-128)
+		B = Y + 1.772 (Cb-128)
+	"""
+	h = len(Y)
+	w = len(Y[0])
+	R = [[0 for i in range(w)] for i in range(h)]
+	G = [[0 for i in range(w)] for i in range(h)]
+	B = [[0 for i in range(w)] for i in range(h)]
+	for i in range(h):
+		for j in range(w):
+			y, cb, cr = Y[i][j], Cb[i][j], Cr[i][j]
+			R[i][j] = clip(round(y + 1.402 * (cr - 128)), 0, 255)
+			G[i][j] = clip(round(y - 0.34414 * (cb - 128) - 0.71414*(cr - 128)), 0, 255)
+			B[i][j] = clip(round(y + 1.772 * (cb - 128)), 0 ,255)
+	return R, G, B
+
+def readImg(path):
+	img = bytearray()
+	with open(path, "rb") as f:
+		byte = f.read(1)
+		while byte:
+			img += byte
+			byte = f.read(1)
+	return img
+
 class Bmp24BitImage():
     def __init__(self, path):
         if (not path.endswith('.bmp')):
@@ -94,7 +120,25 @@ class Bmp24BitImage():
             i += self.bytesPerRow
             pixels.append(rowPixels)
         return pixels
-               
+
+    def getChannels(self):
+    	R, G, B = [], [], []
+    	i = self.dataOffset
+    	while i < len(self.img):
+    		R_row, G_row, B_row = [], [], []
+    		for k in range(i, i + self.width * self.bytesPerPixel, self.bytesPerPixel):
+    			B_row.append(self.img[k])
+    			G_row.append(self.img[k+1])
+    			R_row.append(self.img[k+2])
+    		R.append(R_row)
+    		G.append(G_row)
+    		B.append(B_row)
+    		i += self.bytesPerRow
+    	R.reverse()
+    	G.reverse()
+    	B.reverse()
+    	return R, G, B
+
     def __readImg(self, path):
         img = bytearray()
         with open(path, "rb") as f:
@@ -107,36 +151,24 @@ class Bmp24BitImage():
 class Compressor:
 	def __init__(self, bmpImg):
 		self.bmpImg = bmpImg
-		if bmpImg:
-			self.imgPixels = bmpImg.original()
-			self.imgPixels.reverse()
-		# self.quantization_table = [[1,1,2,4,8,16,32,64],
-		# 							[1,1,2,4,8,16,32,64],
-		# 							[2,2,2,4,8,16,32,64],
-		# 							[4,4,4,4,8,16,32,64],
-		# 							[8,8,8,8,8,16,32,64],
-		# 							[16,16,16,16,16,16,32,64],
-		# 							[32,32,32,32,32,32,32,64],
-		# 							[64,64,64,64,64,64,64,64]]
-		self.quantization_table = [[16,11,10,16,24,40,51,61],
-									[12,12,14,19,26,58,60,65],
-									[14,13,16,24,40,57,69,56],
-									[14,17,22,29,51,87,80,62],
-									[18,22,37,56,68,109,103,7],
-									[24,35,55,64,81,104,113,92],
-									[49,64,78,87,103,121,120,101],
-									[72,92,95,98,112,100,103,99]]
+		self.quantization_table = [[1,1,2,4,8,16,32,64],
+									[1,1,2,4,8,16,32,64],
+									[2,2,2,4,8,16,32,64],
+									[4,4,4,4,8,16,32,64],
+									[8,8,8,8,8,16,32,64],
+									[16,16,16,16,16,16,32,64],
+									[32,32,32,32,32,32,32,64],
+									[64,64,64,64,64,64,64,64]]
 		self.blockSize = 8
-
+		self.dct = self.computeDct(self.blockSize)
 
 	def decompress(self, path):
-		dct = self.dct(self.blockSize)
-		img = bytearray()
-		with open(path, "rb") as f:
-			byte = f.read(1)
-			while byte:
-				img += byte
-				byte = f.read(1)
+		""" Perform image decompression """
+
+		# Read images byte by byte
+		img = readImg(path)
+
+		# Extract metadata for each channel
 		y_h = bytesToInt(img[0:2], byteorder='big')
 		y_w = bytesToInt(img[2:4], byteorder='big')
 		cb_h = bytesToInt(img[4:6], byteorder='big')
@@ -144,135 +176,77 @@ class Compressor:
 		cr_h = bytesToInt(img[8:10], byteorder='big')
 		cr_w = bytesToInt(img[10:12], byteorder='big')
 
+		# Extract encoded Y channel		
 		yEncoded_len = bytesToInt(img[12:15], byteorder='big')
 		yEncoded_end = 15 + yEncoded_len
 		yEncoded = img[15:yEncoded_end]
-
+		# Extract encoded Cb channel
 		cbEncoded_start = yEncoded_end + 3
 		cbEncoded_len = bytesToInt(img[yEncoded_end:cbEncoded_start], byteorder='big')
 		cbEncoded_end = cbEncoded_start + cbEncoded_len
 		cbEncoded = img[cbEncoded_start:cbEncoded_end]
-
+		# Extract encoded Cr channel
 		crEncoded_start = cbEncoded_end + 3
 		crEncoded_len = bytesToInt(img[cbEncoded_end:crEncoded_start], byteorder='big')
 		crEncoded = img[crEncoded_start:]
 
-		y = [[0 for i in range(y_w)] for i in range(y_h)]
-		cb = [[0 for i in range(cb_w)] for i in range(cb_h)]
-		cr = [[0 for i in range(cr_w)] for i in range(cr_h)]
-
-		# Decode
-		i,j = 0,0
-		y_tmp = []
-		while i < yEncoded_len:
-			val = int.from_bytes(yEncoded[i:(i+2)], byteorder='big', signed=True)
-			count = int.from_bytes(yEncoded[(i+2):(i+4)], byteorder='big')
-			for k in range(count):
-				y[j//y_w][j%y_w] = val
-				y_tmp.append(val)
-				j += 1
-			i += 4
-
-		i,j = 0,0
-		while i < cbEncoded_len:
-			val = int.from_bytes(cbEncoded[i:(i+2)], byteorder='big', signed=True)
-			count = int.from_bytes(cbEncoded[(i+2):(i+4)], byteorder='big')
-			for k in range(count):
-				#print(j, k, count, i)
-				cb[j//cb_w][j%cb_w] = val
-				j += 1
-			i += 4
-
-		i,j = 0,0
-		while i < crEncoded_len:
-			val = int.from_bytes(crEncoded[i:(i+2)], byteorder='big', signed=True)
-			count = int.from_bytes(crEncoded[(i+2):(i+4)], byteorder='big')
-			for k in range(count):
-				cr[j//cr_w][j%cr_w] = val
-				j += 1
-			i += 4
-
-
+		y = self.runlengthDecode(yEncoded, y_h, y_w)
+		cb = self.runlengthDecode(cbEncoded, cb_h, cb_w)
+		cr = self.runlengthDecode(crEncoded, cr_h, cr_w)
 
 		# Dequantize
 		self.dequantize(y)
 		self.dequantize(cb)
 		self.dequantize(cr)
 
-
-		#print(y[0])
 		# Revert
-		self.revert(y, dct)
-		self.revert(cb, dct)
-		self.revert(cr, dct)
+		self.revert(y, self.dct)
+		self.revert(cb, self.dct)
+		self.revert(cr, self.dct)
 
 		# Convert to RGB
-		r, g, b = self.ycbcr2rgb(y, cb, cr)
-		# print(r[0])
-		originalPixels = [[(0,0,0) for i in range(y_w)] for i in range(y_h)]	
+		r, g, b = ycbcr2rgb(y, cb, cr)
+		# Reproduce original image/pixels
+		pixels = [[(0,0,0) for i in range(y_w)] for i in range(y_h)]	
 		for i in range(y_h):
 			for j in range(y_w):
-				originalPixels[i][j] = (r[i][j], g[i][j], b[i][j])
+				pixels[i][j] = (r[i][j], g[i][j], b[i][j])
 
-		return originalPixels
+		return pixels
+
 
 
 	def compress(self):
-		y, cb, cr = self.rgb2ycbcr()
+		""" Compress and save BMP image as IMG file """
+		# Extract R, G, B
+		R, G, B = self.bmpImg.getChannels()
+		# Convert RGB to YCbCr
+		y, cb, cr = rgb2ycbcr(R, G, B)
+		# Add padding blocks so that the sizes of 3 channels are divisible by blockSize(8)
 		y = self.addPadding(y, self.blockSize)
 		cb = self.addPadding(cb, self.blockSize)
 		cr = self.addPadding(cr, self.blockSize)
-		#self.downSampling()
-		dct = self.dct(self.blockSize)
 
+		# DCT transform channels
+		self.transform(y, self.dct)
+		self.transform(cb, self.dct)
+		self.transform(cr, self.dct)
 
-		self.transform(y, dct)
-		self.transform(cb, dct)
-		self.transform(cr, dct)
-
+		# Quantize
 		self.quantize(y)
 		self.quantize(cb)
 		self.quantize(cr)
 
-		y_h, y_w = len(y), len(y[0])
-		cb_h, cb_w = len(cb), len(cb[0])
-		cr_h, cr_w = len(cr), len(cr[0])
-		yEncoded, cbEncoded, crEncoded = bytearray(), bytearray(), bytearray()
+		# Encode channels
+		yEncoded = self.runlengthEncode(y)
+		cbEncoded = self.runlengthEncode(cb)
+		crEncoded = self.runlengthEncode(cr)
 
-		i = 0
-		while i < y_h * y_w:
-			val = y[i//y_w][i%y_w]
-			count = 1
-			while i + 1 < y_h * y_w and val == y[(i+1)//y_w][(i+1)%y_w]:
-				count += 1
-				i += 1
-			yEncoded += int(val).to_bytes(2, byteorder='big', signed=True)
-			yEncoded += int(count).to_bytes(2, byteorder='big')
-			i += 1
-		# return
-		i = 0
-		while i < cb_h * cb_w:
-			val = cb[i//cb_w][i%cb_w]
-			count = 1
-			while i + 1 < cb_h * cb_w and val == cb[(i+1)//cb_w][(i+1)%cb_w]:
-				count += 1
-				i += 1
-			cbEncoded += int(val).to_bytes(2, byteorder='big', signed=True)
-			cbEncoded += int(count).to_bytes(2, byteorder='big')
-			i += 1
-		i = 0
-		while i < cr_h * cr_w:
-			val = cr[i//cr_w][i%cr_w]
-			count = 1
-			while i + 1 < cr_h * cr_w and val == cr[(i+1)//cr_w][(i+1)%cr_w]:
-				count += 1
-				i += 1
-			crEncoded += int(val).to_bytes(2, byteorder='big', signed=True)
-			crEncoded += int(count).to_bytes(2, byteorder='big')
-			i += 1
+		# Save all data on file IMG
 		self.save(y, cb, cr, yEncoded, cbEncoded, crEncoded)
 
 	def save(self, y, cb, cr, yEncoded, cbEncoded, crEncoded):
+		""" Save image data as IMG file """
 		fileBytes = bytearray()
 		y_h_byte = int(len(y)).to_bytes(2, byteorder='big')
 		y_w_byte = int(len(y[0])).to_bytes(2, byteorder='big')
@@ -301,6 +275,7 @@ class Compressor:
 
 
 	def quantize(self, x):
+		""" Perform quantization """
 		blockSize = self.blockSize
 		h = len(x)
 		w = len(x[0])
@@ -311,6 +286,7 @@ class Compressor:
 						x[k][g] = round(x[k][g] / self.quantization_table[k - i][g - j])
 
 	def dequantize(self, x):
+		""" Perform dequantization """
 		blockSize = self.blockSize
 		h = len(x)
 		w = len(x[0])
@@ -322,6 +298,7 @@ class Compressor:
 
 
 	def addPadding(self, x, size):
+		""" Add padding for channels """
 		h = len(x)
 		w = len(x[0])
 		if h % size != 0 :
@@ -338,6 +315,7 @@ class Compressor:
 
 
 	def transform(self, x, dct):
+		""" Perform DCT transformation """
 		blockSize = len(dct)
 		h = len(x)
 		w = len(x[0])
@@ -357,6 +335,7 @@ class Compressor:
 		return x
 
 	def revert(self, x, dct):
+		""" Revert DCT transformation """
 		blockSize = len(dct)
 		h = len(x)
 		w = len(x[0])
@@ -377,7 +356,8 @@ class Compressor:
 		return x
 
 
-	def dct(self, N):
+	def computeDct(self, N):
+		""" Compute DCT matrix """
 		C = [[0 for i in range(N)] for i in range(N)]
 		for i in range(N):
 			for j in range(N):
@@ -387,41 +367,35 @@ class Compressor:
 				C[i][j] = a * cos(((2*j+1)*i*pi) / (2*N))
 		return C
 
-	def rgb2ycbcr(self):
-		"""
-			Y = 0.299 R + 0.587 G + 0.114 B
-			Cb = - 0.1687 R - 0.3313 G + 0.5 B + 128
-			Cr = 0.5 R - 0.4187 G - 0.0813 B + 128
-		"""
-		Y = []
-		Cb = []
-		Cr = []
-		for row in self.imgPixels:
-			y_row = []
-			cb_row = []
-			cr_row = []
-			for (r,g,b) in row:
-				y_row.append(round(0.299*r + 0.587*g + 0.114*b))
-				cb_row.append(round(-0.1687*r-0.3313*g+0.5*b+128))
-				cr_row.append(round(0.5*r-0.4187*g-0.0813*b+128))
-			Y.append(y_row)
-			Cb.append(cb_row)
-			Cr.append(cr_row)
-		return Y, Cb, Cr
+	def runlengthEncode(self, x):
+		""" Perform run length encoding for a matrix of values """
+		h = len(x)
+		w = len(x[0])
+		encoded = bytearray()
+		i = 0
+		while i < h * w:
+			val = x[i//w][i%w]
+			count = 1
+			while i + 1 < h * w and val == x[(i+1)//w][(i+1)%w]:
+				count += 1
+				i += 1
+			encoded += int(val).to_bytes(2, byteorder='big', signed=True)
+			encoded += int(count).to_bytes(2, byteorder='big')
+			i += 1
+		return encoded
 
-	def ycbcr2rgb(self, Y, Cb, Cr):
-		h = len(Y)
-		w = len(Y[0])
-		R = [[0 for i in range(w)] for i in range(h)]
-		G = [[0 for i in range(w)] for i in range(h)]
-		B = [[0 for i in range(w)] for i in range(h)]
-		for i in range(len(Y)):
-			for j in range(len(Y[0])):
-				R[i][j] = myround(round(Y[i][j] + 1.402 * (Cr[i][j] - 128)), 0, 255)
-				G[i][j] = myround(round(Y[i][j] - 0.34414 * (Cb[i][j] - 128) - 0.71414*(Cr[i][j] - 128)), 0, 255)
-				B[i][j] = myround(round(Y[i][j] + 1.772 * (Cb[i][j] - 128)), 0 ,255)
-		return R, G, B
-
+	def runlengthDecode(self, x, h, w):
+		""" Perform run length decoding for the encoded data"""
+		i,j = 0,0
+		decoded = [[0 for i in range(w)] for i in range(h)]
+		while i < len(x):
+			val = int.from_bytes(x[i:(i+2)], byteorder='big', signed=True)
+			count = int.from_bytes(x[(i+2):(i+4)], byteorder='big')
+			for k in range(count):
+				decoded[j//w][j%w] = val
+				j += 1
+			i += 4
+		return decoded
 
 if __name__ == "__main__":
     # Init root

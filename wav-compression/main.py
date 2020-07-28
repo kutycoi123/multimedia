@@ -93,6 +93,10 @@ class LZW:
 		self.symbols = []
 		self.encoded = []
 		self.code_dict = defaultdict(str)
+		j = 1
+		for i in range(2**16):
+			self.code_dict[i] = j
+			j+=1
 		self.code_dict_length = 0		
 		self.total_encoded_length = 0
 
@@ -102,9 +106,11 @@ class LZW:
 			return
 		l = len(self.input)
 		idx = 1
-		s = str(self.input[0])
+		#s = str(self.input[0])
+		s = self.input[0]
 		while idx < l:
-			c = str(self.input[idx])
+			#c = str(self.input[idx])
+			c = self.input[idx]
 			if self.code_dict[s+c]:
 				s = s + c
 			else:
@@ -150,13 +156,13 @@ def readSamples(path):
 	dataOffset = 20 + subchunk1Size + 8 # where samples data begin
 
 	samples = []
-
+	print(blockAlign)
     # Loop through samples data
 	while dataOffset < len(offset):
 		sample = offset[dataOffset:(dataOffset+blockAlign)]
-		sampleVal = 0
 		sampleVal = int.from_bytes(sample, byteorder='big')
-		samples.append(binaryConverter(sampleVal))
+		#samples.append(binaryConverter(sampleVal))
+		samples.append(sampleVal)
 		dataOffset += blockAlign
 
 	return samples, len(offset[44:]) * 8 # length in bits

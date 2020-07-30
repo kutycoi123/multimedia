@@ -1,0 +1,41 @@
+Execution details:
+  1. Operating system required: Linux(Ubuntu)
+  2. Execution file: wav-compress.exe
+  3. How to run program:
+     - Just double click the file wav-compress.exe and program will run.
+     - Or open terminal and run: .\wav-compress.exe
+     - Note: The program takes few seconds to start because I installed everything
+     into just one executable file instead of submitting a large folder of program,so
+     that it might be more convenient for you to test.
+     - Source code named: wav-compress.py
+     - Language required: python3
+     - Packages required: tkinter(automatically installed with python3.8)
+     - Command to run source code:
+       	   python3 wav-compress.py
+     - Note: If you don't have tkinter package, you can simply install it by this command:
+    	   sudo apt-get install python3-tk
+
+Source code details:
+1.	Main logic:
+	- The main implementation to perform Huffman and LZW encoding is inside 2 classes: Huffman and LZW
+	- Each class has an entry method named "encode" that is called to encode the input:
+	- Huffman encode:
+		Step 1: Call compute_freq() method to compute the frequency of each symbol
+		Step 2: Call construct_huffman_tree() to construct huffman coding tree based on the symbols' 	
+				frequencies
+		Step 3: Call encode_string() to encode the entire input string based on the Huffman coding tree
+				constructed in step 2
+	- LZW encode: 
+		+ This is much simpler than Huffman coding since it just iterates through each symbol of the input
+		to construct the coding dictionary based on previously seen symbols.
+	- GUI programming:
+		+ Most of GUI programming happens inside "main" function. They are mostly buttons, labels and a
+		event handler when a "choose file" button is clicked. 
+		
+2.	Program flow:
+	- Main program:
+		+ Button clicked -> readData() -> Huffman encode -> LZW encode -> Print out compression ratio
+	- Huffman encode:
+		+ encode: compute_freq() -> construct_huffman_tree() -> encode_string()
+	- LZW encode:
+		+ Just one method encode()

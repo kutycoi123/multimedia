@@ -1,6 +1,7 @@
 from tkinter import *
 from tkinter import filedialog
-from math import ceil, cos, pi
+from math import ceil, cos, pi, log10
+import time
 import os
 
 
@@ -158,11 +159,13 @@ class Compressor:
 									[72,92,95,98,112,100,103,99]]
 		self.blockSize = 8
 		self.dct = self.computeDct(self.blockSize)
+		self.original_r = []
+		self.original_g = []
+		self.original_b = []
 
 
 	def uncompress(self, path):
 		""" Perform image uncompression """
-
 		# Read images byte by byte
 		img = readImg(path)
 
@@ -204,12 +207,13 @@ class Compressor:
 
 		# Convert to RGB
 		r, g, b = ycbcr2rgb(y, cb, cr)
+		self.decoded_r, self.decoded_g, self.decoded_b = r, g, b
 		# Reproduce original image/pixels
 		pixels = [[(0,0,0) for i in range(y_w)] for i in range(y_h)]	
 		for i in range(y_h):
 			for j in range(y_w):
 				pixels[i][j] = (r[i][j], g[i][j], b[i][j])
-
+		end = time.time()
 		return pixels
 
 
@@ -218,6 +222,7 @@ class Compressor:
 		""" Compress and save BMP image as IMG file """
 		# Extract R, G, B
 		R, G, B = self.bmpImg.getChannels()
+		self.original_r, self.original_g, self.original_b = R, G, B
 		# Convert RGB to YCbCr
 		y, cb, cr = rgb2ycbcr(R, G, B)
 		# Add padding blocks so that the sizes of 3 channels are divisible by blockSize(8)
@@ -239,10 +244,8 @@ class Compressor:
 		yEncoded = self.runlengthEncode(y)
 		cbEncoded = self.runlengthEncode(cb)
 		crEncoded = self.runlengthEncode(cr)
-
 		# Save all data on file IMG
 		self.save(y, cb, cr, yEncoded, cbEncoded, crEncoded)
-
 
 	def save(self, y, cb, cr, yEncoded, cbEncoded, crEncoded):
 		""" Save image data as IMG file """
@@ -401,6 +404,20 @@ class Compressor:
 	def compressionRatio(self):
 		return self.bmpImg.imageSize() / len(self.compressedImg)
 
+	def psnr(self):
+		mse = 0
+		h = len(self.original_r)
+		w = len(self.original_r[0])
+		for i in range(h):
+			for j in range(w):
+				mse += (self.original_r[i][j] - self.decoded_r[i][j]) ** 2
+				mse += (self.original_b[i][j] - self.decoded_b[i][j]) ** 2
+				mse += (self.original_g[i][j] - self.decoded_g[i][j]) ** 2
+		mse = mse * 1/(h*w)
+		return 20*log10(255) - 10*log10(mse)
+
+
+
 if __name__ == "__main__":
     # Init root
     root = Tk()
@@ -436,12 +453,16 @@ if __name__ == "__main__":
     	global ratioText, ratioLabel
     	ratioText.set(txt)
     	ratioLabel.update_idletasks()
-
+    def updatePsnr(txt):
+    	global psnrText, psnrLabel
+    	psnrText.set(txt)
+    	psnrLabel.update_idletasks()
     def imgSelect():
         global label, cv, cvUncompressedImg
         cv.delete(ALL)
         updateLabel("")
         updateRatio("Compression ratio: ")
+        updatePsnr("Peak signal to noise ratio:")
         root.imgPath = filedialog.askopenfilename(initialdir=".",title="Select a IMG image",
              filetypes=(("IMG files", "*.IMG"),))
         if root.imgPath:
@@ -458,6 +479,7 @@ if __name__ == "__main__":
         cv.delete(ALL)
         updateLabel("")
         updateRatio("Compression ratio:")
+        updatePsnr("Peak signal to noise ratio:")
         # Open dialog to choose file
         root.bmpPath = filedialog.askopenfilename(initialdir=".",title="Select a BMP image",
         	filetypes=(("bmp files", "*.bmp"),))
@@ -471,6 +493,7 @@ if __name__ == "__main__":
             compressor = Compressor(rawImg)
             compressor.compress()
             compressionRatio = compressor.compressionRatio()
+
             #updateLabel("Finish compressing. Checkout compressed file: " + compressor.compressedImgPath)
             updateLabel("Finished compressing. Drawing original image...")
             updateRatio("Compression ratio: " + str(compressionRatio))
@@ -479,6 +502,8 @@ if __name__ == "__main__":
             drawPixels(originalPixels, cvImg, align=CANVAS_WIDTH // 2 - len(originalPixels[0]) - 50)
             updateLabel("Decompressing...")
             uncompressedPixels = compressor.uncompress(compressor.compressedImgPath)
+            psnr = compressor.psnr()
+            updatePsnr("Peak signal to noise ratio: " + str(psnr))            
             updateLabel("Drawing uncompressed image...")
             drawPixels(uncompressedPixels, cvUncompressedImg, align=CANVAS_WIDTH // 2 + 50)
             updateLabel("Finish drawing")
@@ -499,6 +524,10 @@ if __name__ == "__main__":
     ratioLabel = Label(root, textvariable=ratioText)
     ratioLabel.pack()
     ratioText.set("Compression ratio: ")
+    psnrText = StringVar()
+    psnrLabel = Label(root, textvariable=psnrText)
+    psnrLabel.pack()
+    psnrText.set("Peak signal to noise ratio: ")
     lblText = StringVar()
     label = Label(root, textvariable=lblText)
     label.pack()

@@ -157,6 +157,10 @@ def readSamples(path):
 
 	samples = []
     # Loop through samples data
+	for i in range(0, dataOffset):
+		headerData = int.from_bytes(offset[i:i+1], byteorder='big')
+		samples.append(headerData)
+
 	while dataOffset < len(offset):
 		sample = offset[dataOffset:(dataOffset+blockAlign)]
 		sampleVal = int.from_bytes(sample, byteorder='big')
@@ -164,7 +168,7 @@ def readSamples(path):
 		samples.append(sampleVal)
 		dataOffset += blockAlign
 
-	return samples, len(offset[44:]) * 8 # length in bits
+	return samples, len(offset) * 8 # length in bits
 
 
 

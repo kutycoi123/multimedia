@@ -1,0 +1,58 @@
+Execution details:
+  1. Operating system required: Linux(Ubuntu)
+  2. Execution file: bmp-compress.exe
+  3. How to run program:
+     - Just double click the file bmp-compress.exe and program will run.
+     - Or open terminal and run: .\bmp-compress.exe
+     - Note: The program takes few seconds to start because I installed everything
+     into just one executable file instead of submitting a large folder of program,so
+     that it might be more convenient for you to test.
+     - Source code named: bmp-compress.py
+     - Language required: python3
+     - Packages required: tkinter(automatically installed with python3.8)
+     - Command to run source code:
+       	   python3 bmp-compress.py
+     - Note: If you don't have tkinter package, you can simply install it by this command:
+    	   sudo apt-get install python3-tk
+
+Source code details:
+1.	Main logic:
+	- The core implementation for compression and uncompression is inside "Compressor" class
+	- There are two main methods called "compress" and "uncompress"
+	- Aside from two main methods, there are other utility functions such as:
+		+ quantize: Perform quantization for each block in original images
+		+ dequantize: Perform dequantization for each block in compressed IMG images
+		+ addPadding: Add padding for each dimension of original images so that they are divisible by 
+					  block size
+		+ transform: Perform DCT transformation for original images
+		+ revert: Perform DCT revert transformation for compressed IMG images 
+		+ computeDct: Compute and return DCT matrix with given block size
+		+ runlengthEncode: Perform run length encoding for original images
+		+ runlengthDecode: Perform run length decoding for compressed IMG images
+		+ compressionRatio: Return compression ratio
+		+ psnr: Return peak signal to noise ratio
+	- There are other utility functions that helps to perform color space conversion 
+	(rgb2ycbcr and ycbcr2rgb), matrix multiplication(matrixMult), matrix transpose(transpose), etc
+2.	Program flow:
+	- Main program:
+		"Select BMP image" button clicked -> create Bmp24BitImage instance -> extract original pixels
+		-> create Compressor instance -> call compressor() method -> call compressionRatio() method
+		-> call drawPixels() to draw original image 
+		-> uncompress IMG file -> call psnr() method to get peak signal to noise 
+		-> call drawPixels() to draw uncompressed image
+	- compress:
+		+ call getChannels() to extract R, G, B
+		-> call rgb2ycbcr() to convert RGB to Y, Cb, Cr 
+		-> call addPadding() for 3 channels
+		-> call transform() for 3 channels
+		-> call quantize() for 3 channels
+		-> call runlengthEncode() for 3 channels
+		-> call save() to save as IMG file
+	- uncompress:
+		+ call readImg()
+		-> call bytesToInt() to read metadata and image data
+		-> call runlengthDecode() to decode Y, Cb, Cr
+		-> call dequantize()
+		-> call revert() 
+		-> call ycbcr2rgb() to convert back to RGB color space
+		-> returns decoded pixels
